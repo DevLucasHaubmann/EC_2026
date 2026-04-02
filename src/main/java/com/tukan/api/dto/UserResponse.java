@@ -6,8 +6,8 @@ public record UserResponse(
         Integer id,
         String nome,
         String email,
-        User.TipoUsuario tipo,
-        User.StatusUsuario status
+        User.UserType tipo,
+        User.UserState status
 ) {
 
     public static UserResponse from(User user) {
