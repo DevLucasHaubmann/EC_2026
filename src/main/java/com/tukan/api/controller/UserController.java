@@ -1,37 +1,26 @@
 package com.tukan.api.controller;
 
+import com.tukan.api.dto.UpdateUserRequest;
 import com.tukan.api.dto.UserResponse;
 import com.tukan.api.entity.User;
 import com.tukan.api.service.UserService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/users")
+@RequiredArgsConstructor
+@PreAuthorize("hasAuthority('ADMIN')")
 public class UserController {
 
     private final UserService userService;
-
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
-
-    @PostMapping
-    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody User user){
-        User newUser = userService.createUser(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(newUser));
-    }
 
     @GetMapping
     public ResponseEntity<List<UserResponse>> findAllUsers(){
@@ -61,5 +50,18 @@ public class UserController {
         }
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuário não encontrado.");
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserResponse> update(@PathVariable Integer id,
+                                               @RequestBody @Valid UpdateUserRequest request) {
+        User user = userService.update(id, request);
+        return ResponseEntity.ok(UserResponse.from(user));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

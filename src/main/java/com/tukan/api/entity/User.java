@@ -15,12 +15,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class User {
 
-    public enum TipoUsuario {
+    public enum UserType {
         ADMIN,
         USER
     }
 
-    public enum StatusUsuario {
+    public enum UserState {
         ATIVO,
         BLOQUEADO,
         BANIDO
@@ -47,9 +47,9 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo", nullable = false)
-    private TipoUsuario tipo = TipoUsuario.USER;
+    private UserType tipo = UserType.USER;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private StatusUsuario status = StatusUsuario.ATIVO;
+    private UserState status = UserState.ATIVO;
 }

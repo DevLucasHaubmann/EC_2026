@@ -33,3 +33,9 @@ target/
 # Claude / Anthropic
 CLAUDE.md
 .claude/
+
+# Gitignore
+.gitignore
+
+# Personal information about the project
+.resources/
