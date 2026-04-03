@@ -1,8 +1,10 @@
 package com.tukan.api.controller;
 
+import com.tukan.api.dto.UpdateUserRequest;
 import com.tukan.api.dto.UserResponse;
 import com.tukan.api.entity.User;
 import com.tukan.api.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -48,5 +50,18 @@ public class UserController {
         }
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuário não encontrado.");
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserResponse> update(@PathVariable Integer id,
+                                               @RequestBody @Valid UpdateUserRequest request) {
+        User user = userService.update(id, request);
+        return ResponseEntity.ok(UserResponse.from(user));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }
