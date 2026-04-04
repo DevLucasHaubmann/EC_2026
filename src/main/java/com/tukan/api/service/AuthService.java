@@ -77,7 +77,7 @@ public class AuthService {
         );
     }
 
-    String normalizeEmail(String email) {
+    private String normalizeEmail(String email) {
         return email.trim().toLowerCase(Locale.ROOT);
     }
 }

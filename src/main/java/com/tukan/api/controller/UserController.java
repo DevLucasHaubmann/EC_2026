@@ -2,7 +2,6 @@ package com.tukan.api.controller;
 
 import com.tukan.api.dto.UpdateUserRequest;
 import com.tukan.api.dto.UserResponse;
-import com.tukan.api.entity.User;
 import com.tukan.api.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +11,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/users")
@@ -23,45 +21,32 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    public ResponseEntity<List<UserResponse>> findAllUsers(){
+    public ResponseEntity<List<UserResponse>> findAll() {
         List<UserResponse> users = userService.findAll().stream()
                 .map(UserResponse::from)
                 .toList();
-        return ResponseEntity.status(HttpStatus.OK).body(users);
+        return ResponseEntity.ok(users);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> findById(@PathVariable Integer id){
-        Optional<User> user = userService.findById(id);
-
-        if(user.isPresent()){
-            return ResponseEntity.status(HttpStatus.OK).body(UserResponse.from(user.get()));
-        }
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuário não encontrado.");
+    public ResponseEntity<UserResponse> findById(@PathVariable Integer id) {
+        return ResponseEntity.ok(UserResponse.from(userService.findById(id)));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<?> findByEmail(@RequestParam String email){
-        Optional<User> user = userService.findByEmail(email);
-
-        if(user.isPresent()){
-            return ResponseEntity.status(HttpStatus.OK).body(UserResponse.from(user.get()));
-        }
-
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuário não encontrado.");
+    public ResponseEntity<UserResponse> findByEmail(@RequestParam String email) {
+        return ResponseEntity.ok(UserResponse.from(userService.findByEmail(email)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> update(@PathVariable Integer id,
                                                @RequestBody @Valid UpdateUserRequest request) {
-        User user = userService.update(id, request);
-        return ResponseEntity.ok(UserResponse.from(user));
+        return ResponseEntity.ok(UserResponse.from(userService.update(id, request)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Integer id) {
         userService.delete(id);
-        return ResponseEntity.noContent().build();
     }
 }
