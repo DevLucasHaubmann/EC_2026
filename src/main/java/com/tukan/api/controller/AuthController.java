@@ -25,7 +25,7 @@ public class AuthController {
         AuthResponse response = authService.register(
                 request,
                 httpRequest.getHeader("User-Agent"),
-                httpRequest.getRemoteAddr()
+                resolveClientIp(httpRequest)
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -36,7 +36,7 @@ public class AuthController {
         AuthResponse response = authService.login(
                 request,
                 httpRequest.getHeader("User-Agent"),
-                httpRequest.getRemoteAddr()
+                resolveClientIp(httpRequest)
         );
         return ResponseEntity.ok(response);
     }
@@ -47,7 +47,7 @@ public class AuthController {
         AuthResponse response = authService.refresh(
                 request,
                 httpRequest.getHeader("User-Agent"),
-                httpRequest.getRemoteAddr()
+                resolveClientIp(httpRequest)
         );
         return ResponseEntity.ok(response);
     }
@@ -56,5 +56,13 @@ public class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(@RequestBody @Valid RefreshRequest request) {
         authService.logout(request);
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

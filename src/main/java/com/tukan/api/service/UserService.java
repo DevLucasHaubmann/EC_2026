@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Locale;
@@ -76,11 +75,10 @@ public class UserService {
         boolean isSelfDeletion = authenticatedUser.getId().equals(targetUser.getId());
 
         if (isSelfDeletion) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Um administrador não pode excluir a própria conta."
-            );
+            throw new BusinessException("Um administrador não pode excluir a própria conta.", HttpStatus.FORBIDDEN);
         }
+
+        userSessionService.deleteAllByUsuarioId(targetUserId);
         userRepository.delete(targetUser);
     }
 

@@ -9,6 +9,7 @@ import com.tukan.api.entity.UserSession;
 import com.tukan.api.exception.BusinessException;
 import com.tukan.api.repository.UserRepository;
 import com.tukan.api.security.JwtService;
+import com.tukan.api.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -62,8 +63,8 @@ public class AuthService {
                 )
         );
 
-        User user = userRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new BusinessException("Usuário não encontrado.", HttpStatus.NOT_FOUND));
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        User user = principal.user();
 
         return buildAuthResponse(authentication, user, dispositivo, enderecoIp, "Login realizado com sucesso.");
     }
