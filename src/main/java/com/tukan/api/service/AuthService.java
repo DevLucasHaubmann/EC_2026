@@ -69,7 +69,7 @@ public class AuthService {
         return buildAuthResponse(authentication, user, dispositivo, enderecoIp, "Login realizado com sucesso.");
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public AuthResponse refresh(RefreshRequest request, String dispositivo, String enderecoIp) {
         UserSession session = userSessionService.findByRefreshToken(request.refreshToken())
                 .orElseThrow(() -> new BusinessException("Refresh token inválido.", HttpStatus.UNAUTHORIZED));

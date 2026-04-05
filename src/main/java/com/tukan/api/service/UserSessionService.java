@@ -6,7 +6,6 @@ import com.tukan.api.repository.UserSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
@@ -71,7 +70,7 @@ public class UserSessionService {
         userSessionRepository.save(session);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public int revokeAllSessions(Integer usuarioId) {
         return userSessionRepository.revokeAllByUsuarioId(usuarioId, Instant.now());
     }
