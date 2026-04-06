@@ -5,6 +5,7 @@ import com.tukan.api.dto.UserResponse;
 import com.tukan.api.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -44,9 +45,16 @@ public class UserController {
         return ResponseEntity.ok(UserResponse.from(userService.update(id, request)));
     }
 
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Integer id) {
-        userService.delete(id);
+    public void delete(@PathVariable Integer id, Authentication authentication) {
+        userService.delete(id, authentication.getName());
+    }
+
+    @DeleteMapping("/{id}/sessions")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revokeSessions(@PathVariable Integer id) {
+        userService.revokeAllSessions(id);
     }
 }

@@ -2,12 +2,16 @@ package com.tukan.api.service;
 
 import com.tukan.api.dto.AuthResponse;
 import com.tukan.api.dto.LoginRequest;
+import com.tukan.api.dto.RefreshRequest;
 import com.tukan.api.dto.RegisterRequest;
 import com.tukan.api.entity.User;
+import com.tukan.api.entity.UserSession;
 import com.tukan.api.exception.BusinessException;
 import com.tukan.api.repository.UserRepository;
 import com.tukan.api.security.JwtService;
+import com.tukan.api.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -27,9 +31,10 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final UserSessionService userSessionService;
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResponse register(RegisterRequest request, String dispositivo, String enderecoIp) {
         String normalizedEmail = normalizeEmail(request.email());
 
         if (userRepository.existsByEmail(normalizedEmail)) {
@@ -45,22 +50,12 @@ public class AuthService {
 
         userRepository.save(user);
 
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                user.getEmail(),
-                null,
-                List.of(new SimpleGrantedAuthority(user.getTipo().name()))
-        );
-
-        String token = jwtService.generateToken(authentication);
-
-        return new AuthResponse(
-                token,
-                "Bearer",
-                "Usuário cadastrado com sucesso."
-        );
+        Authentication authentication = toAuthentication(user);
+        return buildAuthResponse(authentication, user, dispositivo, enderecoIp, "Usuário cadastrado com sucesso.");
     }
 
-    public AuthResponse login(LoginRequest request) {
+    @Transactional
+    public AuthResponse login(LoginRequest request, String dispositivo, String enderecoIp) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         normalizeEmail(request.email()),
@@ -68,12 +63,70 @@ public class AuthService {
                 )
         );
 
-        String token = jwtService.generateToken(authentication);
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        User user = principal.user();
+
+        return buildAuthResponse(authentication, user, dispositivo, enderecoIp, "Login realizado com sucesso.");
+    }
+
+    @Transactional(noRollbackFor = BusinessException.class)
+    public AuthResponse refresh(RefreshRequest request, String dispositivo, String enderecoIp) {
+        UserSession session = userSessionService.findByRefreshToken(request.refreshToken())
+                .orElseThrow(() -> new BusinessException("Refresh token inválido.", HttpStatus.UNAUTHORIZED));
+
+        if (session.isRevoked()) {
+            userSessionService.revokeAllSessions(session.getUsuario().getId());
+            throw new BusinessException("Refresh token já utilizado. Todas as sessões foram revogadas por segurança.", HttpStatus.UNAUTHORIZED);
+        }
+
+        if (session.isExpired()) {
+            throw new BusinessException("Refresh token expirado.", HttpStatus.UNAUTHORIZED);
+        }
+
+        User user = session.getUsuario();
+
+        if (user.getStatus() != User.UserState.ATIVO) {
+            userSessionService.revokeAllSessions(user.getId());
+            throw new BusinessException("Usuário não está ativo.", HttpStatus.FORBIDDEN);
+        }
+
+        userSessionService.revokeSession(session);
+
+        Authentication authentication = toAuthentication(user);
+        return buildAuthResponse(authentication, user, dispositivo, enderecoIp, "Token renovado com sucesso.");
+    }
+
+    @Transactional
+    public void logout(RefreshRequest request) {
+        UserSession session = userSessionService.findByRefreshToken(request.refreshToken())
+                .orElseThrow(() -> new BusinessException("Refresh token inválido.", HttpStatus.UNAUTHORIZED));
+
+        if (!session.isRevoked()) {
+            userSessionService.revokeSession(session);
+        }
+    }
+
+    private AuthResponse buildAuthResponse(Authentication authentication, User user,
+                                           String dispositivo, String enderecoIp, String message) {
+        String accessToken = jwtService.generateAccessToken(authentication);
+        String refreshToken = userSessionService.generateRefreshToken();
+
+        userSessionService.createSession(user, refreshToken, dispositivo, enderecoIp);
 
         return new AuthResponse(
-                token,
+                accessToken,
+                refreshToken,
                 "Bearer",
-                "Login realizado com sucesso."
+                jwtService.getAccessTokenExpiration(),
+                message
+        );
+    }
+
+    private Authentication toAuthentication(User user) {
+        return new UsernamePasswordAuthenticationToken(
+                user.getEmail(),
+                null,
+                List.of(new SimpleGrantedAuthority(user.getTipo().name()))
         );
     }
 
