@@ -38,4 +38,9 @@ CLAUDE.md
 .gitignore
 
 # Personal information about the project
-.resources/
+.recources/
+
+.mvn/*
+pom.xml
+mvnw.cmd
+mvnw
