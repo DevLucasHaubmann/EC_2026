@@ -2,6 +2,7 @@ package com.tukan.api.service;
 
 import com.tukan.api.dto.AuthResponse;
 import com.tukan.api.dto.LoginRequest;
+import com.tukan.api.dto.OnboardingStatus;
 import com.tukan.api.dto.RefreshRequest;
 import com.tukan.api.dto.RegisterRequest;
 import com.tukan.api.entity.User;
@@ -32,6 +33,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserSessionService userSessionService;
+    private final OnboardingService onboardingService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request, String dispositivo, String enderecoIp) {
@@ -113,12 +115,16 @@ public class AuthService {
 
         userSessionService.createSession(user, refreshToken, dispositivo, enderecoIp);
 
+        OnboardingStatus onboarding = onboardingService.verificarOnboarding(user.getId());
+
         return new AuthResponse(
                 accessToken,
                 refreshToken,
                 "Bearer",
                 jwtService.getAccessTokenExpiration(),
-                message
+                message,
+                onboarding.onboardingRequired(),
+                onboarding.nextStep()
         );
     }
 

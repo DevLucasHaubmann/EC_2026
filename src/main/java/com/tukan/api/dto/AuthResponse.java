@@ -5,6 +5,8 @@ public record AuthResponse(
         String refreshToken,
         String type,
         long expiresIn,
-        String message
+        String message,
+        boolean onboardingRequired,
+        String nextStep
 ) {
 }
