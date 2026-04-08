@@ -10,4 +10,6 @@ public interface PerfilRepository extends JpaRepository<Perfil, Integer> {
     boolean existsByUsuarioId(Integer usuarioId);
 
     Optional<Perfil> findByUsuarioId(Integer usuarioId);
+
+    void deleteByUsuarioId(Integer usuarioId);
 }

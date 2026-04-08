@@ -60,4 +60,14 @@ public class Perfil {
 
     @Column(name = "atualizado_em")
     private Instant atualizadoEm;
+
+    @PrePersist
+    protected void onCreate() {
+        this.criadoEm = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.atualizadoEm = Instant.now();
+    }
 }

@@ -3,6 +3,8 @@ package com.tukan.api.service;
 import com.tukan.api.dto.UpdateUserRequest;
 import com.tukan.api.entity.User;
 import com.tukan.api.exception.BusinessException;
+import com.tukan.api.repository.PerfilRepository;
+import com.tukan.api.repository.TriagemRepository;
 import com.tukan.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,6 +20,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserSessionService userSessionService;
+    private final PerfilRepository perfilRepository;
+    private final TriagemRepository triagemRepository;
 
     public List<User> findAll() {
         return userRepository.findAll();
@@ -78,6 +82,8 @@ public class UserService {
             throw new BusinessException("Um administrador não pode excluir a própria conta.", HttpStatus.FORBIDDEN);
         }
 
+        triagemRepository.deleteByUsuarioId(targetUserId);
+        perfilRepository.deleteByUsuarioId(targetUserId);
         userSessionService.deleteAllByUsuarioId(targetUserId);
         userRepository.delete(targetUser);
     }

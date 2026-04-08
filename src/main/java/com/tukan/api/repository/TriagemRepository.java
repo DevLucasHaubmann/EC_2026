@@ -10,4 +10,6 @@ public interface TriagemRepository extends JpaRepository<Triagem, Integer> {
     boolean existsByUsuarioId(Integer usuarioId);
 
     Optional<Triagem> findByUsuarioId(Integer usuarioId);
+
+    void deleteByUsuarioId(Integer usuarioId);
 }
