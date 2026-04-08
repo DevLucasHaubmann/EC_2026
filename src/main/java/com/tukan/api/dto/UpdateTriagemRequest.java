@@ -1,0 +1,16 @@
+package com.tukan.api.dto;
+
+import jakarta.validation.constraints.Size;
+
+public record UpdateTriagemRequest(
+
+        @Size(max = 500, message = "Restrições alimentares devem ter no máximo 500 caracteres.")
+        String restricoesAlimentares,
+
+        @Size(max = 500, message = "Alergias devem ter no máximo 500 caracteres.")
+        String alergias,
+
+        @Size(max = 500, message = "Condições de saúde devem ter no máximo 500 caracteres.")
+        String condicoesSaude
+) {
+}
