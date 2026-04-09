@@ -43,9 +43,17 @@ public class TriagemService {
 
     @Transactional
     public Triagem atualizarPropriaTriagem(String emailAutenticado, UpdateTriagemRequest request) {
+        if (request.objetivo() == null && request.restricoesAlimentares() == null
+                && request.alergias() == null && request.condicoesSaude() == null) {
+            throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
+        }
+
         User usuario = buscarUsuarioPorEmail(emailAutenticado);
         Triagem triagem = buscarTriagemPorUsuarioId(usuario.getId());
 
+        if (request.objetivo() != null) {
+            triagem.setObjetivo(request.objetivo());
+        }
         if (request.restricoesAlimentares() != null) {
             triagem.setRestricoesAlimentares(request.restricoesAlimentares());
         }
@@ -85,6 +93,11 @@ public class TriagemService {
 
     @Transactional
     public Triagem atualizarTriagem(Integer id, AdminUpdateTriagemRequest request) {
+        if (request.objetivo() == null && request.restricoesAlimentares() == null
+                && request.alergias() == null && request.condicoesSaude() == null) {
+            throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
+        }
+
         Triagem triagem = buscarPorId(id);
 
         if (request.objetivo() != null) {

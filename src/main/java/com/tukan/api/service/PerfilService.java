@@ -43,6 +43,10 @@ public class PerfilService {
 
     @Transactional
     public Perfil atualizarProprioPerfil(String emailAutenticado, UpdatePerfilRequest request) {
+        if (request.pesoKg() == null && request.alturaCm() == null && request.nivelAtividade() == null) {
+            throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
+        }
+
         User usuario = buscarUsuarioPorEmail(emailAutenticado);
         Perfil perfil = buscarPerfilPorUsuarioId(usuario.getId());
 
@@ -85,6 +89,12 @@ public class PerfilService {
 
     @Transactional
     public Perfil atualizarPerfil(Integer id, AdminUpdatePerfilRequest request) {
+        if (request.dataNascimento() == null && request.sexo() == null
+                && request.pesoKg() == null && request.alturaCm() == null
+                && request.nivelAtividade() == null) {
+            throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
+        }
+
         Perfil perfil = buscarPorId(id);
 
         if (request.dataNascimento() != null) {
