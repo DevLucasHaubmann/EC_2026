@@ -15,13 +15,13 @@ public record MeResponse(
 
     public static MeResponse from(DadosUsuarioAutenticado dados) {
         return new MeResponse(
-                dados.getUser().getId(),
-                dados.getUser().getNome(),
-                dados.getUser().getEmail(),
-                dados.getUser().getTipo(),
-                dados.getUser().getStatus(),
-                dados.getPerfil() != null ? PerfilResponse.from(dados.getPerfil()) : null,
-                dados.getTriagem() != null ? TriagemResponse.from(dados.getTriagem()) : null
+                dados.user().getId(),
+                dados.user().getNome(),
+                dados.user().getEmail(),
+                dados.user().getTipo(),
+                dados.user().getStatus(),
+                dados.perfil() != null ? PerfilResponse.from(dados.perfil()) : null,
+                dados.triagem() != null ? TriagemResponse.from(dados.triagem()) : null
         );
     }
 }

@@ -16,9 +16,9 @@ public record DashboardResponse(
 
     public static DashboardResponse from(DadosUsuarioAutenticado dados, OnboardingStatus onboarding) {
         return new DashboardResponse(
-                dados.getUser().getNome(),
-                dados.getPerfil() != null ? ResumoPerfilResponse.from(dados.getPerfil()) : null,
-                dados.getTriagem() != null ? ResumoTriagemResponse.from(dados.getTriagem()) : null,
+                dados.user().getNome(),
+                dados.perfil() != null ? ResumoPerfilResponse.from(dados.perfil()) : null,
+                dados.triagem() != null ? ResumoTriagemResponse.from(dados.triagem()) : null,
                 onboarding
         );
     }
