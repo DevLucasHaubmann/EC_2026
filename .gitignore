@@ -22,7 +22,9 @@ Thumbs.db
 .sts4-cache/
 
 # Local/sensitive files
-src/main/resources/application-local.properties
+.src/main/resources/application-local.properties
+.claude/
+CLAUDE.md
 
 # Keep essential project files versioned
 !.gitignore
