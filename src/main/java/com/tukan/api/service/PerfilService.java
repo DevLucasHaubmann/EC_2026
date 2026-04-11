@@ -7,7 +7,6 @@ import com.tukan.api.entity.Perfil;
 import com.tukan.api.entity.User;
 import com.tukan.api.exception.BusinessException;
 import com.tukan.api.repository.PerfilRepository;
-import com.tukan.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,35 +19,35 @@ import org.springframework.transaction.annotation.Transactional;
 public class PerfilService {
 
     private final PerfilRepository perfilRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
 
     // ── Self-service ──────────────────────────────────────────────
 
     @Transactional
-    public Perfil criarProprioPerfil(String emailAutenticado, CreatePerfilRequest request) {
-        User usuario = buscarUsuarioPorEmail(emailAutenticado);
+    public Perfil createOwn(String authenticatedEmail, CreatePerfilRequest request) {
+        User usuario = userService.findByEmail(authenticatedEmail);
 
         if (perfilRepository.existsByUsuarioId(usuario.getId())) {
             throw new BusinessException("Este usuário já possui um perfil.", HttpStatus.CONFLICT);
         }
 
-        return criarPerfil(usuario, request);
+        return createPerfil(usuario, request);
     }
 
     @Transactional(readOnly = true)
-    public Perfil buscarProprioPerfil(String emailAutenticado) {
-        User usuario = buscarUsuarioPorEmail(emailAutenticado);
-        return buscarPerfilPorUsuarioId(usuario.getId());
+    public Perfil findOwn(String authenticatedEmail) {
+        User usuario = userService.findByEmail(authenticatedEmail);
+        return findByUsuarioId(usuario.getId());
     }
 
     @Transactional
-    public Perfil atualizarProprioPerfil(String emailAutenticado, UpdatePerfilRequest request) {
+    public Perfil updateOwn(String authenticatedEmail, UpdatePerfilRequest request) {
         if (request.pesoKg() == null && request.alturaCm() == null && request.nivelAtividade() == null) {
             throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
         }
 
-        User usuario = buscarUsuarioPorEmail(emailAutenticado);
-        Perfil perfil = buscarPerfilPorUsuarioId(usuario.getId());
+        User usuario = userService.findByEmail(authenticatedEmail);
+        Perfil perfil = findByUsuarioId(usuario.getId());
 
         if (request.pesoKg() != null) {
             perfil.setPesoKg(request.pesoKg());
@@ -66,36 +65,36 @@ public class PerfilService {
     // ── Admin CRUD ────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public Page<Perfil> listarTodos(Pageable pageable) {
+    public Page<Perfil> findAll(Pageable pageable) {
         return perfilRepository.findAll(pageable);
     }
 
     @Transactional(readOnly = true)
-    public Perfil buscarPorId(Integer id) {
+    public Perfil findById(Integer id) {
         return perfilRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Perfil não encontrado.", HttpStatus.NOT_FOUND));
     }
 
     @Transactional
-    public Perfil criarPerfilParaUsuario(Integer usuarioId, CreatePerfilRequest request) {
-        User usuario = buscarUsuarioPorId(usuarioId);
+    public Perfil createForUser(Integer usuarioId, CreatePerfilRequest request) {
+        User usuario = userService.findById(usuarioId);
 
         if (perfilRepository.existsByUsuarioId(usuarioId)) {
             throw new BusinessException("Este usuário já possui um perfil.", HttpStatus.CONFLICT);
         }
 
-        return criarPerfil(usuario, request);
+        return createPerfil(usuario, request);
     }
 
     @Transactional
-    public Perfil atualizarPerfil(Integer id, AdminUpdatePerfilRequest request) {
+    public Perfil update(Integer id, AdminUpdatePerfilRequest request) {
         if (request.dataNascimento() == null && request.sexo() == null
                 && request.pesoKg() == null && request.alturaCm() == null
                 && request.nivelAtividade() == null) {
             throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
         }
 
-        Perfil perfil = buscarPorId(id);
+        Perfil perfil = findById(id);
 
         if (request.dataNascimento() != null) {
             perfil.setDataNascimento(request.dataNascimento());
@@ -117,7 +116,7 @@ public class PerfilService {
     }
 
     @Transactional
-    public void deletar(Integer id) {
+    public void delete(Integer id) {
         Perfil perfil = perfilRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Perfil não encontrado.", HttpStatus.NOT_FOUND));
         perfilRepository.delete(perfil);
@@ -125,7 +124,7 @@ public class PerfilService {
 
     // ── Métodos internos ──────────────────────────────────────────
 
-    private Perfil criarPerfil(User usuario, CreatePerfilRequest request) {
+    private Perfil createPerfil(User usuario, CreatePerfilRequest request) {
         Perfil perfil = new Perfil();
         perfil.setUsuario(usuario);
         perfil.setDataNascimento(request.dataNascimento());
@@ -137,18 +136,8 @@ public class PerfilService {
         return perfilRepository.save(perfil);
     }
 
-    private Perfil buscarPerfilPorUsuarioId(Integer usuarioId) {
+    private Perfil findByUsuarioId(Integer usuarioId) {
         return perfilRepository.findByUsuarioId(usuarioId)
                 .orElseThrow(() -> new BusinessException("Perfil não encontrado.", HttpStatus.NOT_FOUND));
-    }
-
-    private User buscarUsuarioPorEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new BusinessException("Usuário não encontrado.", HttpStatus.NOT_FOUND));
-    }
-
-    private User buscarUsuarioPorId(Integer id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("Usuário não encontrado.", HttpStatus.NOT_FOUND));
     }
 }

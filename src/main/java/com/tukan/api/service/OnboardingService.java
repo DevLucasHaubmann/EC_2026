@@ -5,6 +5,7 @@ import com.tukan.api.repository.PerfilRepository;
 import com.tukan.api.repository.TriagemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -13,19 +14,20 @@ public class OnboardingService {
     private final PerfilRepository perfilRepository;
     private final TriagemRepository triagemRepository;
 
-    public OnboardingStatus verificarOnboarding(Integer usuarioId) {
-        boolean temPerfil = perfilRepository.existsByUsuarioId(usuarioId);
-        boolean temTriagem = triagemRepository.existsByUsuarioId(usuarioId);
+    @Transactional(readOnly = true)
+    public OnboardingStatus checkOnboarding(Integer usuarioId) {
+        boolean hasPerfil = perfilRepository.existsByUsuarioId(usuarioId);
+        boolean hasTriagem = triagemRepository.existsByUsuarioId(usuarioId);
 
-        boolean onboardingRequired = !temPerfil || !temTriagem;
-        String nextStep = calcularProximoPasso(temPerfil, temTriagem);
+        boolean onboardingRequired = !hasPerfil || !hasTriagem;
+        String nextStep = resolveNextStep(hasPerfil, hasTriagem);
 
         return new OnboardingStatus(onboardingRequired, nextStep);
     }
 
-    private String calcularProximoPasso(boolean temPerfil, boolean temTriagem) {
-        if (!temPerfil) return "/perfil/primeiro-acesso";
-        if (!temTriagem) return "/triagem";
+    private String resolveNextStep(boolean hasPerfil, boolean hasTriagem) {
+        if (!hasPerfil) return "/perfil/primeiro-acesso";
+        if (!hasTriagem) return "/triagem";
         return "/dashboard";
     }
 }

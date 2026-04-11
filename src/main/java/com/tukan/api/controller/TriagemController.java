@@ -30,69 +30,69 @@ public class TriagemController {
     // ── Self-service (qualquer usuário autenticado) ───────────────
 
     @PostMapping("/me")
-    public ResponseEntity<TriagemCreatedResponse> criarPropriaTriagem(
+    public ResponseEntity<TriagemCreatedResponse> createOwn(
             @RequestBody @Valid CreateTriagemRequest request,
             Authentication authentication) {
-        Triagem triagem = triagemService.criarPropriaTriagem(authentication.getName(), request);
-        OnboardingStatus onboarding = onboardingService.verificarOnboarding(triagem.getUsuario().getId());
+        Triagem triagem = triagemService.createOwn(authentication.getName(), request);
+        OnboardingStatus onboarding = onboardingService.checkOnboarding(triagem.getUsuario().getId());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(TriagemCreatedResponse.of(triagem, onboarding));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<TriagemResponse> buscarPropriaTriagem(Authentication authentication) {
+    public ResponseEntity<TriagemResponse> findOwn(Authentication authentication) {
         return ResponseEntity.ok(
-                TriagemResponse.from(triagemService.buscarPropriaTriagem(authentication.getName())));
+                TriagemResponse.from(triagemService.findOwn(authentication.getName())));
     }
 
     @PutMapping("/me")
-    public ResponseEntity<TriagemResponse> atualizarPropriaTriagem(
+    public ResponseEntity<TriagemResponse> updateOwn(
             @RequestBody @Valid UpdateTriagemRequest request,
             Authentication authentication) {
         return ResponseEntity.ok(
                 TriagemResponse.from(
-                        triagemService.atualizarPropriaTriagem(authentication.getName(), request)));
+                        triagemService.updateOwn(authentication.getName(), request)));
     }
 
     // ── Admin CRUD ────────────────────────────────────────────────
 
     @GetMapping
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Page<TriagemResponse>> listarTodas(Pageable pageable) {
-        Page<TriagemResponse> triagens = triagemService.listarTodas(pageable)
+    public ResponseEntity<Page<TriagemResponse>> findAll(Pageable pageable) {
+        Page<TriagemResponse> triagens = triagemService.findAll(pageable)
                 .map(TriagemResponse::from);
         return ResponseEntity.ok(triagens);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<TriagemResponse> buscarPorId(@PathVariable Integer id) {
-        return ResponseEntity.ok(TriagemResponse.from(triagemService.buscarPorId(id)));
+    public ResponseEntity<TriagemResponse> findById(@PathVariable Integer id) {
+        return ResponseEntity.ok(TriagemResponse.from(triagemService.findById(id)));
     }
 
     @PostMapping("/usuario/{usuarioId}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<TriagemResponse> criarTriagemParaUsuario(
+    public ResponseEntity<TriagemResponse> createForUser(
             @PathVariable Integer usuarioId,
             @RequestBody @Valid CreateTriagemRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(TriagemResponse.from(
-                        triagemService.criarTriagemParaUsuario(usuarioId, request)));
+                        triagemService.createForUser(usuarioId, request)));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<TriagemResponse> atualizarTriagem(
+    public ResponseEntity<TriagemResponse> update(
             @PathVariable Integer id,
             @RequestBody @Valid AdminUpdateTriagemRequest request) {
         return ResponseEntity.ok(
-                TriagemResponse.from(triagemService.atualizarTriagem(id, request)));
+                TriagemResponse.from(triagemService.update(id, request)));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletarTriagem(@PathVariable Integer id) {
-        triagemService.deletar(id);
+    public void delete(@PathVariable Integer id) {
+        triagemService.delete(id);
     }
 }

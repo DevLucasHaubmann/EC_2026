@@ -22,7 +22,7 @@ public class DashboardController {
     @GetMapping
     public ResponseEntity<DashboardResponse> getDashboard(Authentication authentication) {
         var dados = meService.findAuthenticatedUserData(authentication.getName());
-        OnboardingStatus onboarding = onboardingService.verificarOnboarding(dados.user().getId());
+        OnboardingStatus onboarding = onboardingService.checkOnboarding(dados.user().getId());
         return ResponseEntity.ok(DashboardResponse.from(dados, onboarding));
     }
 }

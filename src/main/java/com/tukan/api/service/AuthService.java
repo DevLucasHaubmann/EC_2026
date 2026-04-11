@@ -115,7 +115,7 @@ public class AuthService {
 
         userSessionService.createSession(user, refreshToken, dispositivo, enderecoIp);
 
-        OnboardingStatus onboarding = onboardingService.verificarOnboarding(user.getId());
+        OnboardingStatus onboarding = onboardingService.checkOnboarding(user.getId());
 
         return new AuthResponse(
                 accessToken,

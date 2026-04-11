@@ -7,7 +7,6 @@ import com.tukan.api.entity.Triagem;
 import com.tukan.api.entity.User;
 import com.tukan.api.exception.BusinessException;
 import com.tukan.api.repository.TriagemRepository;
-import com.tukan.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,36 +19,36 @@ import org.springframework.transaction.annotation.Transactional;
 public class TriagemService {
 
     private final TriagemRepository triagemRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
 
     // ── Self-service ──────────────────────────────────────────────
 
     @Transactional
-    public Triagem criarPropriaTriagem(String emailAutenticado, CreateTriagemRequest request) {
-        User usuario = buscarUsuarioPorEmail(emailAutenticado);
+    public Triagem createOwn(String authenticatedEmail, CreateTriagemRequest request) {
+        User usuario = userService.findByEmail(authenticatedEmail);
 
         if (triagemRepository.existsByUsuarioId(usuario.getId())) {
             throw new BusinessException("Este usuário já possui uma triagem.", HttpStatus.CONFLICT);
         }
 
-        return criarTriagem(usuario, request);
+        return createTriagem(usuario, request);
     }
 
     @Transactional(readOnly = true)
-    public Triagem buscarPropriaTriagem(String emailAutenticado) {
-        User usuario = buscarUsuarioPorEmail(emailAutenticado);
-        return buscarTriagemPorUsuarioId(usuario.getId());
+    public Triagem findOwn(String authenticatedEmail) {
+        User usuario = userService.findByEmail(authenticatedEmail);
+        return findByUsuarioId(usuario.getId());
     }
 
     @Transactional
-    public Triagem atualizarPropriaTriagem(String emailAutenticado, UpdateTriagemRequest request) {
+    public Triagem updateOwn(String authenticatedEmail, UpdateTriagemRequest request) {
         if (request.objetivo() == null && request.restricoesAlimentares() == null
                 && request.alergias() == null && request.condicoesSaude() == null) {
             throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
         }
 
-        User usuario = buscarUsuarioPorEmail(emailAutenticado);
-        Triagem triagem = buscarTriagemPorUsuarioId(usuario.getId());
+        User usuario = userService.findByEmail(authenticatedEmail);
+        Triagem triagem = findByUsuarioId(usuario.getId());
 
         if (request.objetivo() != null) {
             triagem.setObjetivo(request.objetivo());
@@ -70,35 +69,35 @@ public class TriagemService {
     // ── Admin CRUD ────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public Page<Triagem> listarTodas(Pageable pageable) {
+    public Page<Triagem> findAll(Pageable pageable) {
         return triagemRepository.findAll(pageable);
     }
 
     @Transactional(readOnly = true)
-    public Triagem buscarPorId(Integer id) {
+    public Triagem findById(Integer id) {
         return triagemRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Triagem não encontrada.", HttpStatus.NOT_FOUND));
     }
 
     @Transactional
-    public Triagem criarTriagemParaUsuario(Integer usuarioId, CreateTriagemRequest request) {
-        User usuario = buscarUsuarioPorId(usuarioId);
+    public Triagem createForUser(Integer usuarioId, CreateTriagemRequest request) {
+        User usuario = userService.findById(usuarioId);
 
         if (triagemRepository.existsByUsuarioId(usuarioId)) {
             throw new BusinessException("Este usuário já possui uma triagem.", HttpStatus.CONFLICT);
         }
 
-        return criarTriagem(usuario, request);
+        return createTriagem(usuario, request);
     }
 
     @Transactional
-    public Triagem atualizarTriagem(Integer id, AdminUpdateTriagemRequest request) {
+    public Triagem update(Integer id, AdminUpdateTriagemRequest request) {
         if (request.objetivo() == null && request.restricoesAlimentares() == null
                 && request.alergias() == null && request.condicoesSaude() == null) {
             throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
         }
 
-        Triagem triagem = buscarPorId(id);
+        Triagem triagem = findById(id);
 
         if (request.objetivo() != null) {
             triagem.setObjetivo(request.objetivo());
@@ -117,7 +116,7 @@ public class TriagemService {
     }
 
     @Transactional
-    public void deletar(Integer id) {
+    public void delete(Integer id) {
         Triagem triagem = triagemRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Triagem não encontrada.", HttpStatus.NOT_FOUND));
         triagemRepository.delete(triagem);
@@ -125,7 +124,7 @@ public class TriagemService {
 
     // ── Métodos internos ──────────────────────────────────────────
 
-    private Triagem criarTriagem(User usuario, CreateTriagemRequest request) {
+    private Triagem createTriagem(User usuario, CreateTriagemRequest request) {
         Triagem triagem = new Triagem();
         triagem.setUsuario(usuario);
         triagem.setObjetivo(request.objetivo());
@@ -136,18 +135,8 @@ public class TriagemService {
         return triagemRepository.save(triagem);
     }
 
-    private Triagem buscarTriagemPorUsuarioId(Integer usuarioId) {
+    private Triagem findByUsuarioId(Integer usuarioId) {
         return triagemRepository.findByUsuarioId(usuarioId)
                 .orElseThrow(() -> new BusinessException("Triagem não encontrada.", HttpStatus.NOT_FOUND));
-    }
-
-    private User buscarUsuarioPorEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new BusinessException("Usuário não encontrado.", HttpStatus.NOT_FOUND));
-    }
-
-    private User buscarUsuarioPorId(Integer id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("Usuário não encontrado.", HttpStatus.NOT_FOUND));
     }
 }
