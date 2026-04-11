@@ -1,46 +1,65 @@
-# Compiled class file
-*.class
-
-# Log file
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
-
-# IDE
-/.idea
-*.iml
-
-# Maven
+# =========================
+# Build output
+# =========================
 target/
+build/
+out/
 
-# Claude / Anthropic
-CLAUDE.md
-.claude/
+# =========================
+# Logs
+# =========================
+*.log
+*.log.*
 
-# Gitignore
-.gitignore
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
 
-# Personal information about the project
-.recources/
+# =========================
+# IntelliJ / JetBrains
+# =========================
+.idea/
+*.iml
+*.ipr
+*.iws
 
-.mvn/*
-pom.xml
-mvnw.cmd
-mvnw
+# =========================
+# VS Code
+# =========================
+.vscode/
+
+# =========================
+# Eclipse / STS
+# =========================
+.classpath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# =========================
+# Local env / sensitive files
+# =========================
+.env
+.env.*
+src/main/resources/application-local.properties
+src/main/resources/application-dev.properties
+src/main/resources/application-prod.properties
+
+# =========================
+# Temporary / scripts local-only
+# =========================
+*.tmp
+*.bak
+
+# =========================
+# Keep Maven wrapper versioned
+# =========================
+!.mvn/
+!.mvn/wrapper/
+!.mvn/wrapper/maven-wrapper.properties
+!.mvn/wrapper/maven-wrapper.jar
+!mvnw
+!mvnw.cmd
