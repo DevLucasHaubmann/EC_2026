@@ -65,6 +65,12 @@ public class GlobalExceptionHandler {
                         "Content-Type não suportado. Use application/json."));
     }
 
+    @ExceptionHandler(AiProviderException.class)
+    public ResponseEntity<ErrorResponse> handleAiProviderException(AiProviderException e) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ErrorResponse.of(HttpStatus.BAD_GATEWAY.value(), e.getMessage()));
+    }
+
     @ExceptionHandler(IncompleteProfileException.class)
     public ResponseEntity<ErrorResponse> handleIncompleteProfile(IncompleteProfileException e) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)

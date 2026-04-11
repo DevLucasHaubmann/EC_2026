@@ -51,7 +51,7 @@ public class AiContextService {
     }
 
     private AiUsuarioContext buildUsuarioContext(User user) {
-        return new AiUsuarioContext(user.getId(), user.getNome());
+        return new AiUsuarioContext(user.getNome());
     }
 
     private AiPerfilContext buildPerfilContext(Perfil perfil) {
