@@ -1,6 +1,7 @@
 package com.tukan.api.dto;
 
 import com.tukan.api.entity.User;
+import com.tukan.api.service.MeService.DadosUsuarioAutenticado;
 
 public record MeResponse(
         Integer id,
@@ -12,15 +13,15 @@ public record MeResponse(
         TriagemResponse triagem
 ) {
 
-    public static MeResponse from(User user, PerfilResponse perfil, TriagemResponse triagem) {
+    public static MeResponse from(DadosUsuarioAutenticado dados) {
         return new MeResponse(
-                user.getId(),
-                user.getNome(),
-                user.getEmail(),
-                user.getTipo(),
-                user.getStatus(),
-                perfil,
-                triagem
+                dados.getUser().getId(),
+                dados.getUser().getNome(),
+                dados.getUser().getEmail(),
+                dados.getUser().getTipo(),
+                dados.getUser().getStatus(),
+                dados.getPerfil() != null ? PerfilResponse.from(dados.getPerfil()) : null,
+                dados.getTriagem() != null ? TriagemResponse.from(dados.getTriagem()) : null
         );
     }
 }
