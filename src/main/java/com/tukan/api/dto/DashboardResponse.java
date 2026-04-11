@@ -5,7 +5,6 @@ import com.tukan.api.entity.Triagem;
 import com.tukan.api.service.MeService.DadosUsuarioAutenticado;
 
 import java.time.LocalDate;
-import java.time.Period;
 
 public record DashboardResponse(
         String nome,
@@ -35,7 +34,7 @@ public record DashboardResponse(
 
         public static ResumoPerfilResponse from(Perfil perfil) {
             double imc = calcularImc(perfil.getPesoKg(), perfil.getAlturaCm());
-            int idade = Period.between(perfil.getDataNascimento(), LocalDate.now()).getYears();
+            int idade = perfil.calcularIdade(LocalDate.now());
 
             return new ResumoPerfilResponse(
                     perfil.getPesoKg(),

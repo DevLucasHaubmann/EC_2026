@@ -65,6 +65,12 @@ public class GlobalExceptionHandler {
                         "Content-Type não suportado. Use application/json."));
     }
 
+    @ExceptionHandler(IncompleteProfileException.class)
+    public ResponseEntity<ErrorResponse> handleIncompleteProfile(IncompleteProfileException e) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(ErrorResponse.of(HttpStatus.UNPROCESSABLE_ENTITY.value(), e.getMessage()));
+    }
+
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException e) {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)

@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Period;
 
 @Entity
 @Table(name = "perfil_nutricional", indexes = {
@@ -60,6 +61,10 @@ public class Perfil {
 
     @Column(name = "atualizado_em")
     private Instant atualizadoEm;
+
+    public int calcularIdade(LocalDate referencia) {
+        return Period.between(this.dataNascimento, referencia).getYears();
+    }
 
     @PrePersist
     protected void onCreate() {
