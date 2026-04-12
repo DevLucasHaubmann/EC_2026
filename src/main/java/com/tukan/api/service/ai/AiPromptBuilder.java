@@ -3,6 +3,7 @@ package com.tukan.api.service.ai;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tukan.api.dto.ai.AiRecommendationContext;
+import com.tukan.api.exception.AiProviderException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -44,7 +45,7 @@ public class AiPromptBuilder {
             String contextJson = objectMapper.writeValueAsString(contexto);
             return "Analise o seguinte contexto nutricional e gere a recomendação inicial:\n\n" + contextJson;
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Erro ao serializar contexto da IA.", e);
+            throw new AiProviderException("Erro ao serializar contexto da IA.", e);
         }
     }
 }

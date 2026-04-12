@@ -51,5 +51,8 @@ public class AiRecommendationService {
         if (response.recomendacoes() == null || response.recomendacoes().isEmpty()) {
             throw new AiProviderException("A resposta da IA está incompleta: campo 'recomendacoes' ausente.");
         }
+        if (response.alertas() == null) {
+            throw new AiProviderException("A resposta da IA está incompleta: campo 'alertas' ausente.");
+        }
     }
 }
