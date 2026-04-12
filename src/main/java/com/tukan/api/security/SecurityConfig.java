@@ -58,18 +58,10 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint((request, response, authException) -> {
-                            response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                            ErrorResponse body = ErrorResponse.of(
-                                    HttpStatus.UNAUTHORIZED.value(),
-                                    "Autenticação necessária. Forneça um token JWT válido."
-                            );
-                            response.getWriter().write(objectMapper.writeValueAsString(body));
-                        })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setStatus(HttpStatus.FORBIDDEN.value());
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setCharacterEncoding("UTF-8");
                             ErrorResponse body = ErrorResponse.of(
                                     HttpStatus.FORBIDDEN.value(),
                                     "Acesso negado. Permissão insuficiente."
@@ -79,6 +71,16 @@ public class SecurityConfig {
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setCharacterEncoding("UTF-8");
+                            ErrorResponse body = ErrorResponse.of(
+                                    HttpStatus.UNAUTHORIZED.value(),
+                                    "Autenticação necessária. Forneça um token JWT válido."
+                            );
+                            response.getWriter().write(objectMapper.writeValueAsString(body));
+                        })
                 );
 
         return http.build();

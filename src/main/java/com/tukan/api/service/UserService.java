@@ -12,7 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 
 @Service
@@ -24,8 +25,8 @@ public class UserService {
     private final NutritionalProfileRepository nutritionalProfileRepository;
     private final AssessmentRepository assessmentRepository;
 
-    public List<User> findAll() {
-        return userRepository.findAll();
+    public Page<User> findAll(Pageable pageable) {
+        return userRepository.findAll(pageable);
     }
 
     public User findById(Integer id) {
@@ -72,10 +73,10 @@ public class UserService {
     @Transactional
     public void delete(Integer targetUserId, String authenticatedEmail) {
         User authenticatedUser = userRepository.findByEmail(authenticatedEmail)
-                .orElseThrow(() -> new BusinessException("Usuário autenticado não encontrado."));
+                .orElseThrow(() -> new BusinessException("Usuário autenticado não encontrado.", HttpStatus.NOT_FOUND));
 
         User targetUser = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new BusinessException("Usuário não encontrado."));
+                .orElseThrow(() -> new BusinessException("Usuário não encontrado.", HttpStatus.NOT_FOUND));
 
         boolean isSelfDeletion = authenticatedUser.getId().equals(targetUser.getId());
 
