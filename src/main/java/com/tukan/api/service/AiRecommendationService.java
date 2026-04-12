@@ -5,13 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tukan.api.dto.ai.AiRecommendationContext;
 import com.tukan.api.dto.ai.AiRecommendationResponse;
 import com.tukan.api.dto.FeedbackRequest;
-import com.tukan.api.entity.FeedbackRecomendacao;
-import com.tukan.api.entity.Recomendacao;
+import com.tukan.api.entity.RecommendationFeedback;
+import com.tukan.api.entity.Recommendation;
 import com.tukan.api.entity.User;
 import com.tukan.api.exception.AiProviderException;
 import com.tukan.api.exception.BusinessException;
-import com.tukan.api.repository.FeedbackRecomendacaoRepository;
-import com.tukan.api.repository.RecomendacaoRepository;
+import com.tukan.api.repository.RecommendationFeedbackRepository;
+import com.tukan.api.repository.RecommendationRepository;
 import com.tukan.api.service.ai.AiPromptBuilder;
 import com.tukan.api.service.ai.AiProviderClient;
 import com.tukan.api.service.ai.AiProviderResult;
@@ -30,127 +30,127 @@ public class AiRecommendationService {
     private final AiContextService aiContextService;
     private final AiPromptBuilder aiPromptBuilder;
     private final AiProviderClient aiProviderClient;
-    private final RecomendacaoRepository recomendacaoRepository;
-    private final FeedbackRecomendacaoRepository feedbackRecomendacaoRepository;
+    private final RecommendationRepository recommendationRepository;
+    private final RecommendationFeedbackRepository recommendationFeedbackRepository;
     private final ObjectMapper objectMapper;
 
-    private static final List<Recomendacao.StatusRecomendacao> ACTIVE_STATUSES = List.of(
-            Recomendacao.StatusRecomendacao.GERADA,
-            Recomendacao.StatusRecomendacao.VISUALIZADA
+    private static final List<Recommendation.RecommendationStatus> ACTIVE_STATUSES = List.of(
+            Recommendation.RecommendationStatus.GENERATED,
+            Recommendation.RecommendationStatus.VIEWED
     );
 
     @Transactional
-    public Recomendacao generateAndSave(String authenticatedEmail) {
-        User usuario = userService.findByEmail(authenticatedEmail);
+    public Recommendation generateAndSave(String authenticatedEmail) {
+        User user = userService.findByEmail(authenticatedEmail);
 
-        archiveActiveRecommendations(usuario.getId());
+        archiveActiveRecommendations(user.getId());
 
-        AiRecommendationContext contexto = aiContextService.build(usuario.getId());
+        AiRecommendationContext context = aiContextService.build(user.getId());
 
         String systemPrompt = aiPromptBuilder.buildSystemPrompt();
-        String userPrompt = aiPromptBuilder.buildUserPrompt(contexto);
+        String userPrompt = aiPromptBuilder.buildUserPrompt(context);
 
         AiProviderResult providerResult = aiProviderClient.send(systemPrompt, userPrompt);
 
         AiRecommendationResponse parsed = parseResponse(providerResult.content());
 
-        Recomendacao recomendacao = toEntity(usuario, parsed, contexto, providerResult);
-        return recomendacaoRepository.save(recomendacao);
+        Recommendation recommendation = toEntity(user, parsed, context, providerResult);
+        return recommendationRepository.save(recommendation);
     }
 
-    private void archiveActiveRecommendations(Integer usuarioId) {
-        List<Recomendacao> activeRecommendations = recomendacaoRepository
-                .findByUsuarioIdAndStatusIn(usuarioId, ACTIVE_STATUSES);
+    private void archiveActiveRecommendations(Integer userId) {
+        List<Recommendation> activeRecommendations = recommendationRepository
+                .findByUserIdAndStatusIn(userId, ACTIVE_STATUSES);
 
-        for (Recomendacao rec : activeRecommendations) {
-            rec.setStatus(Recomendacao.StatusRecomendacao.ARQUIVADA);
+        for (Recommendation rec : activeRecommendations) {
+            rec.setStatus(Recommendation.RecommendationStatus.ARCHIVED);
         }
 
-        recomendacaoRepository.saveAll(activeRecommendations);
+        recommendationRepository.saveAll(activeRecommendations);
     }
 
     @Transactional(readOnly = true)
-    public Recomendacao findLatest(String authenticatedEmail) {
-        Integer usuarioId = userService.findByEmail(authenticatedEmail).getId();
-        return recomendacaoRepository.findFirstByUsuarioIdOrderByCriadoEmDesc(usuarioId)
+    public Recommendation findLatest(String authenticatedEmail) {
+        Integer userId = userService.findByEmail(authenticatedEmail).getId();
+        return recommendationRepository.findFirstByUserIdOrderByCreatedAtDesc(userId)
                 .orElseThrow(() -> new BusinessException(
                         "Nenhuma recomendação encontrada para este usuário.", HttpStatus.NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
-    public List<Recomendacao> findAllByUser(String authenticatedEmail) {
-        Integer usuarioId = userService.findByEmail(authenticatedEmail).getId();
-        return recomendacaoRepository.findByUsuarioIdOrderByCriadoEmDesc(usuarioId);
+    public List<Recommendation> findAllByUser(String authenticatedEmail) {
+        Integer userId = userService.findByEmail(authenticatedEmail).getId();
+        return recommendationRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     @Transactional(readOnly = true)
-    public Recomendacao findById(Integer id, String authenticatedEmail) {
+    public Recommendation findById(Integer id, String authenticatedEmail) {
         return findByIdAndOwner(id, authenticatedEmail);
     }
 
     @Transactional
-    public Recomendacao markAsViewed(Integer id, String authenticatedEmail) {
-        Recomendacao recomendacao = findByIdAndOwner(id, authenticatedEmail);
+    public Recommendation markAsViewed(Integer id, String authenticatedEmail) {
+        Recommendation recommendation = findByIdAndOwner(id, authenticatedEmail);
 
-        if (recomendacao.getStatus() != Recomendacao.StatusRecomendacao.GERADA) {
+        if (recommendation.getStatus() != Recommendation.RecommendationStatus.GENERATED) {
             throw new BusinessException(
                     "Apenas recomendações com status GERADA podem ser marcadas como visualizadas.",
                     HttpStatus.CONFLICT);
         }
 
-        recomendacao.setStatus(Recomendacao.StatusRecomendacao.VISUALIZADA);
-        return recomendacaoRepository.save(recomendacao);
+        recommendation.setStatus(Recommendation.RecommendationStatus.VIEWED);
+        return recommendationRepository.save(recommendation);
     }
 
     @Transactional
-    public FeedbackRecomendacao addFeedback(Integer id, String authenticatedEmail, FeedbackRequest request) {
-        Recomendacao recomendacao = findByIdAndOwner(id, authenticatedEmail);
+    public RecommendationFeedback addFeedback(Integer id, String authenticatedEmail, FeedbackRequest request) {
+        Recommendation recommendation = findByIdAndOwner(id, authenticatedEmail);
 
-        if (feedbackRecomendacaoRepository.existsByRecomendacaoId(id)) {
+        if (recommendationFeedbackRepository.existsByRecommendationId(id)) {
             throw new BusinessException(
                     "Esta recomendação já possui feedback registrado.", HttpStatus.CONFLICT);
         }
 
-        FeedbackRecomendacao feedback = new FeedbackRecomendacao();
-        feedback.setRecomendacao(recomendacao);
-        feedback.setAvaliacao(request.avaliacao());
-        feedback.setMotivo(request.motivo());
-        feedback.setObservacao(request.observacao());
-        return feedbackRecomendacaoRepository.save(feedback);
+        RecommendationFeedback feedback = new RecommendationFeedback();
+        feedback.setRecommendation(recommendation);
+        feedback.setRating(request.rating());
+        feedback.setReason(request.reason());
+        feedback.setObservation(request.observation());
+        return recommendationFeedbackRepository.save(feedback);
     }
 
     @Transactional
-    public Recomendacao archive(Integer id, String authenticatedEmail) {
-        Recomendacao recomendacao = findByIdAndOwner(id, authenticatedEmail);
+    public Recommendation archive(Integer id, String authenticatedEmail) {
+        Recommendation recommendation = findByIdAndOwner(id, authenticatedEmail);
 
-        if (recomendacao.getStatus() == Recomendacao.StatusRecomendacao.ARQUIVADA) {
+        if (recommendation.getStatus() == Recommendation.RecommendationStatus.ARCHIVED) {
             throw new BusinessException(
                     "Esta recomendação já está arquivada.", HttpStatus.CONFLICT);
         }
 
-        recomendacao.setStatus(Recomendacao.StatusRecomendacao.ARQUIVADA);
-        return recomendacaoRepository.save(recomendacao);
+        recommendation.setStatus(Recommendation.RecommendationStatus.ARCHIVED);
+        return recommendationRepository.save(recommendation);
     }
 
-    private Recomendacao findByIdAndOwner(Integer id, String authenticatedEmail) {
-        Integer usuarioId = userService.findByEmail(authenticatedEmail).getId();
-        return recomendacaoRepository.findByIdAndUsuarioId(id, usuarioId)
+    private Recommendation findByIdAndOwner(Integer id, String authenticatedEmail) {
+        Integer userId = userService.findByEmail(authenticatedEmail).getId();
+        return recommendationRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new BusinessException(
                         "Recomendação não encontrada.", HttpStatus.NOT_FOUND));
     }
 
-    private Recomendacao toEntity(User usuario, AiRecommendationResponse response,
-                                   AiRecommendationContext contexto, AiProviderResult providerResult) {
-        Recomendacao recomendacao = new Recomendacao();
-        recomendacao.setUsuario(usuario);
-        recomendacao.setResumo(response.resumo());
-        recomendacao.setRecomendacoes(toJson(response.recomendacoes()));
-        recomendacao.setAlertas(toJson(response.alertas()));
-        recomendacao.setContextoJson(toJson(contexto));
-        recomendacao.setProvider(providerResult.provider());
-        recomendacao.setModel(providerResult.model());
-        recomendacao.setStatus(Recomendacao.StatusRecomendacao.GERADA);
-        return recomendacao;
+    private Recommendation toEntity(User user, AiRecommendationResponse response,
+                                     AiRecommendationContext context, AiProviderResult providerResult) {
+        Recommendation recommendation = new Recommendation();
+        recommendation.setUser(user);
+        recommendation.setSummary(response.summary());
+        recommendation.setRecommendations(toJson(response.recommendations()));
+        recommendation.setAlerts(toJson(response.alerts()));
+        recommendation.setContextJson(toJson(context));
+        recommendation.setProvider(providerResult.provider());
+        recommendation.setModel(providerResult.model());
+        recommendation.setStatus(Recommendation.RecommendationStatus.GENERATED);
+        return recommendation;
     }
 
     private String toJson(Object value) {
@@ -174,13 +174,13 @@ public class AiRecommendationService {
     }
 
     private void validateResponse(AiRecommendationResponse response) {
-        if (response.resumo() == null || response.resumo().isBlank()) {
+        if (response.summary() == null || response.summary().isBlank()) {
             throw new AiProviderException("A resposta da IA está incompleta: campo 'resumo' ausente.");
         }
-        if (response.recomendacoes() == null || response.recomendacoes().isEmpty()) {
+        if (response.recommendations() == null || response.recommendations().isEmpty()) {
             throw new AiProviderException("A resposta da IA está incompleta: campo 'recomendacoes' ausente.");
         }
-        if (response.alertas() == null) {
+        if (response.alerts() == null) {
             throw new AiProviderException("A resposta da IA está incompleta: campo 'alertas' ausente.");
         }
     }

@@ -1,8 +1,15 @@
 package com.tukan.api.dto.ai;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public record AiRecommendationContext(
-        AiUsuarioContext usuario,
-        AiPerfilContext perfil,
-        AiTriagemContext triagem
+        @JsonProperty("usuario")
+        AiUsuarioContext user,
+
+        @JsonProperty("perfil")
+        AiPerfilContext profile,
+
+        @JsonProperty("triagem")
+        AiTriagemContext assessment
 ) {
 }

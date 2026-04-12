@@ -1,8 +1,8 @@
 package com.tukan.api.service;
 
 import com.tukan.api.dto.OnboardingStatus;
-import com.tukan.api.repository.PerfilRepository;
-import com.tukan.api.repository.TriagemRepository;
+import com.tukan.api.repository.NutritionalProfileRepository;
+import com.tukan.api.repository.AssessmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,23 +11,23 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class OnboardingService {
 
-    private final PerfilRepository perfilRepository;
-    private final TriagemRepository triagemRepository;
+    private final NutritionalProfileRepository nutritionalProfileRepository;
+    private final AssessmentRepository assessmentRepository;
 
     @Transactional(readOnly = true)
-    public OnboardingStatus checkOnboarding(Integer usuarioId) {
-        boolean hasPerfil = perfilRepository.existsByUsuarioId(usuarioId);
-        boolean hasTriagem = triagemRepository.existsByUsuarioId(usuarioId);
+    public OnboardingStatus checkOnboarding(Integer userId) {
+        boolean hasProfile = nutritionalProfileRepository.existsByUserId(userId);
+        boolean hasAssessment = assessmentRepository.existsByUserId(userId);
 
-        boolean onboardingRequired = !hasPerfil || !hasTriagem;
-        String nextStep = resolveNextStep(hasPerfil, hasTriagem);
+        boolean onboardingRequired = !hasProfile || !hasAssessment;
+        String nextStep = resolveNextStep(hasProfile, hasAssessment);
 
         return new OnboardingStatus(onboardingRequired, nextStep);
     }
 
-    private String resolveNextStep(boolean hasPerfil, boolean hasTriagem) {
-        if (!hasPerfil) return "/perfil/primeiro-acesso";
-        if (!hasTriagem) return "/triagem";
+    private String resolveNextStep(boolean hasProfile, boolean hasAssessment) {
+        if (!hasProfile) return "/perfil/primeiro-acesso";
+        if (!hasAssessment) return "/triagem";
         return "/dashboard";
     }
 }

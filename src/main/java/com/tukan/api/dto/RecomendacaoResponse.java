@@ -1,37 +1,50 @@
 package com.tukan.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tukan.api.entity.Recomendacao;
+import com.tukan.api.entity.Recommendation;
 
 import java.time.Instant;
 import java.util.List;
 
 public record RecomendacaoResponse(
         Integer id,
-        Integer usuarioId,
-        String resumo,
-        List<String> recomendacoes,
-        List<String> alertas,
+
+        @JsonProperty("usuarioId")
+        Integer userId,
+
+        @JsonProperty("resumo")
+        String summary,
+
+        @JsonProperty("recomendacoes")
+        List<String> recommendations,
+
+        @JsonProperty("alertas")
+        List<String> alerts,
+
         String provider,
         String model,
-        Recomendacao.StatusRecomendacao status,
-        Instant criadoEm
+
+        Recommendation.RecommendationStatus status,
+
+        @JsonProperty("criadoEm")
+        Instant createdAt
 ) {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    public static RecomendacaoResponse from(Recomendacao recomendacao) {
+    public static RecomendacaoResponse from(Recommendation recommendation) {
         return new RecomendacaoResponse(
-                recomendacao.getId(),
-                recomendacao.getUsuario().getId(),
-                recomendacao.getResumo(),
-                parseJsonList(recomendacao.getRecomendacoes()),
-                parseJsonList(recomendacao.getAlertas()),
-                recomendacao.getProvider(),
-                recomendacao.getModel(),
-                recomendacao.getStatus(),
-                recomendacao.getCriadoEm()
+                recommendation.getId(),
+                recommendation.getUser().getId(),
+                recommendation.getSummary(),
+                parseJsonList(recommendation.getRecommendations()),
+                parseJsonList(recommendation.getAlerts()),
+                recommendation.getProvider(),
+                recommendation.getModel(),
+                recommendation.getStatus(),
+                recommendation.getCreatedAt()
         );
     }
 

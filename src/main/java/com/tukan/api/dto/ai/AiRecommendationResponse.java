@@ -1,10 +1,17 @@
 package com.tukan.api.dto.ai;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
 public record AiRecommendationResponse(
-        String resumo,
-        List<String> recomendacoes,
-        List<String> alertas
+        @JsonProperty("resumo")
+        String summary,
+
+        @JsonProperty("recomendacoes")
+        List<String> recommendations,
+
+        @JsonProperty("alertas")
+        List<String> alerts
 ) {
 }

@@ -5,10 +5,10 @@ import lombok.Getter;
 @Getter
 public class IncompleteProfileException extends RuntimeException {
 
-    private final String campoAusente;
+    private final String missingField;
 
-    public IncompleteProfileException(String campoAusente, String message) {
+    public IncompleteProfileException(String missingField, String message) {
         super(message);
-        this.campoAusente = campoAusente;
+        this.missingField = missingField;
     }
 }

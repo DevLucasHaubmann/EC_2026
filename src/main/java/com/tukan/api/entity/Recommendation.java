@@ -14,12 +14,12 @@ import java.time.Instant;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Recomendacao {
+public class Recommendation {
 
-    public enum StatusRecomendacao {
-        GERADA,
-        VISUALIZADA,
-        ARQUIVADA
+    public enum RecommendationStatus {
+        GENERATED,
+        VIEWED,
+        ARCHIVED
     }
 
     @Id
@@ -28,19 +28,19 @@ public class Recomendacao {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
-    private User usuario;
+    private User user;
 
     @Column(name = "resumo", nullable = false, columnDefinition = "TEXT")
-    private String resumo;
+    private String summary;
 
     @Column(name = "recomendacoes", nullable = false, columnDefinition = "TEXT")
-    private String recomendacoes;
+    private String recommendations;
 
     @Column(name = "alertas", nullable = false, columnDefinition = "TEXT")
-    private String alertas;
+    private String alerts;
 
     @Column(name = "contexto_json", nullable = false, columnDefinition = "TEXT")
-    private String contextoJson;
+    private String contextJson;
 
     @Column(name = "provider", nullable = false, length = 50)
     private String provider;
@@ -50,13 +50,13 @@ public class Recomendacao {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private StatusRecomendacao status;
+    private RecommendationStatus status;
 
     @Column(name = "criado_em", nullable = false, updatable = false)
-    private Instant criadoEm;
+    private Instant createdAt;
 
     @PrePersist
     protected void onCreate() {
-        this.criadoEm = Instant.now();
+        this.createdAt = Instant.now();
     }
 }

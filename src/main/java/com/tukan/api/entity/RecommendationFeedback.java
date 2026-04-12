@@ -14,11 +14,11 @@ import java.time.Instant;
 @Getter
 @Setter
 @NoArgsConstructor
-public class FeedbackRecomendacao {
+public class RecommendationFeedback {
 
-    public enum Avaliacao {
-        GOSTOU,
-        NAO_GOSTOU
+    public enum Rating {
+        LIKED,
+        DISLIKED
     }
 
     @Id
@@ -27,23 +27,23 @@ public class FeedbackRecomendacao {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recomendacao_id", nullable = false)
-    private Recomendacao recomendacao;
+    private Recommendation recommendation;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "avaliacao", nullable = false)
-    private Avaliacao avaliacao;
+    private Rating rating;
 
     @Column(name = "motivo", length = 500)
-    private String motivo;
+    private String reason;
 
     @Column(name = "observacao", length = 1000)
-    private String observacao;
+    private String observation;
 
     @Column(name = "criado_em", nullable = false, updatable = false)
-    private Instant criadoEm;
+    private Instant createdAt;
 
     @PrePersist
     protected void onCreate() {
-        this.criadoEm = Instant.now();
+        this.createdAt = Instant.now();
     }
 }

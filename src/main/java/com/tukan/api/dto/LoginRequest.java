@@ -1,5 +1,6 @@
 package com.tukan.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
@@ -9,7 +10,8 @@ public record LoginRequest(
         @NotBlank(message = "O e-mail é obrigatório.")
         String email,
 
+        @JsonProperty("senha")
         @NotBlank(message = "A senha é obrigatória.")
-        String senha
+        String password
 ) {
 }

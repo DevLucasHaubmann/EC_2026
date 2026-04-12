@@ -6,9 +6,9 @@ import com.tukan.api.dto.OnboardingStatus;
 import com.tukan.api.dto.PerfilCreatedResponse;
 import com.tukan.api.dto.PerfilResponse;
 import com.tukan.api.dto.UpdatePerfilRequest;
-import com.tukan.api.entity.Perfil;
+import com.tukan.api.entity.NutritionalProfile;
 import com.tukan.api.service.OnboardingService;
-import com.tukan.api.service.PerfilService;
+import com.tukan.api.service.NutritionalProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class PerfilController {
 
-    private final PerfilService perfilService;
+    private final NutritionalProfileService nutritionalProfileService;
     private final OnboardingService onboardingService;
 
     // ── Self-service (qualquer usuário autenticado) ───────────────
@@ -33,16 +33,16 @@ public class PerfilController {
     public ResponseEntity<PerfilCreatedResponse> createOwn(
             @RequestBody @Valid CreatePerfilRequest request,
             Authentication authentication) {
-        Perfil perfil = perfilService.createOwn(authentication.getName(), request);
-        OnboardingStatus onboarding = onboardingService.checkOnboarding(perfil.getUsuario().getId());
+        NutritionalProfile profile = nutritionalProfileService.createOwn(authentication.getName(), request);
+        OnboardingStatus onboarding = onboardingService.checkOnboarding(profile.getUser().getId());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(PerfilCreatedResponse.of(perfil, onboarding));
+                .body(PerfilCreatedResponse.of(profile, onboarding));
     }
 
     @GetMapping("/me")
     public ResponseEntity<PerfilResponse> findOwn(Authentication authentication) {
         return ResponseEntity.ok(
-                PerfilResponse.from(perfilService.findOwn(authentication.getName())));
+                PerfilResponse.from(nutritionalProfileService.findOwn(authentication.getName())));
     }
 
     @PutMapping("/me")
@@ -51,7 +51,7 @@ public class PerfilController {
             Authentication authentication) {
         return ResponseEntity.ok(
                 PerfilResponse.from(
-                        perfilService.updateOwn(authentication.getName(), request)));
+                        nutritionalProfileService.updateOwn(authentication.getName(), request)));
     }
 
     // ── Admin CRUD ────────────────────────────────────────────────
@@ -59,15 +59,15 @@ public class PerfilController {
     @GetMapping
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Page<PerfilResponse>> findAll(Pageable pageable) {
-        Page<PerfilResponse> perfis = perfilService.findAll(pageable)
+        Page<PerfilResponse> profiles = nutritionalProfileService.findAll(pageable)
                 .map(PerfilResponse::from);
-        return ResponseEntity.ok(perfis);
+        return ResponseEntity.ok(profiles);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<PerfilResponse> findById(@PathVariable Integer id) {
-        return ResponseEntity.ok(PerfilResponse.from(perfilService.findById(id)));
+        return ResponseEntity.ok(PerfilResponse.from(nutritionalProfileService.findById(id)));
     }
 
     @PostMapping("/usuario/{usuarioId}")
@@ -77,7 +77,7 @@ public class PerfilController {
             @RequestBody @Valid CreatePerfilRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(PerfilResponse.from(
-                        perfilService.createForUser(usuarioId, request)));
+                        nutritionalProfileService.createForUser(usuarioId, request)));
     }
 
     @PutMapping("/{id}")
@@ -86,13 +86,13 @@ public class PerfilController {
             @PathVariable Integer id,
             @RequestBody @Valid AdminUpdatePerfilRequest request) {
         return ResponseEntity.ok(
-                PerfilResponse.from(perfilService.update(id, request)));
+                PerfilResponse.from(nutritionalProfileService.update(id, request)));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Integer id) {
-        perfilService.delete(id);
+        nutritionalProfileService.delete(id);
     }
 }

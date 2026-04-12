@@ -1,6 +1,7 @@
 package com.tukan.api.dto;
 
-import com.tukan.api.entity.Perfil;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.tukan.api.entity.NutritionalProfile;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -10,12 +11,14 @@ import java.time.LocalDate;
 
 public record CreatePerfilRequest(
 
+        @JsonProperty("dataNascimento")
         @NotNull(message = "A data de nascimento é obrigatória.")
         @Past(message = "A data de nascimento deve estar no passado.")
-        LocalDate dataNascimento,
+        LocalDate dateOfBirth,
 
+        @JsonProperty("sexo")
         @NotNull(message = "O sexo é obrigatório.")
-        Perfil.Sexo sexo,
+        NutritionalProfile.Gender gender,
 
         @NotNull(message = "O peso é obrigatório.")
         @DecimalMin(value = "20.0", message = "O peso mínimo aceito é 20 kg.")
@@ -27,7 +30,8 @@ public record CreatePerfilRequest(
         @DecimalMax(value = "300.0", message = "A altura máxima aceita é 300 cm.")
         Double alturaCm,
 
+        @JsonProperty("nivelAtividade")
         @NotNull(message = "O nível de atividade é obrigatório.")
-        Perfil.NivelAtividade nivelAtividade
+        NutritionalProfile.ActivityLevel activityLevel
 ) {
 }

@@ -4,12 +4,12 @@ import com.tukan.api.dto.ai.AiPerfilContext;
 import com.tukan.api.dto.ai.AiRecommendationContext;
 import com.tukan.api.dto.ai.AiTriagemContext;
 import com.tukan.api.dto.ai.AiUsuarioContext;
-import com.tukan.api.entity.Perfil;
-import com.tukan.api.entity.Triagem;
+import com.tukan.api.entity.NutritionalProfile;
+import com.tukan.api.entity.Assessment;
 import com.tukan.api.entity.User;
 import com.tukan.api.exception.IncompleteProfileException;
-import com.tukan.api.repository.PerfilRepository;
-import com.tukan.api.repository.TriagemRepository;
+import com.tukan.api.repository.NutritionalProfileRepository;
+import com.tukan.api.repository.AssessmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,59 +26,59 @@ import java.util.stream.Collectors;
 public class AiContextService {
 
     private final UserService userService;
-    private final PerfilRepository perfilRepository;
-    private final TriagemRepository triagemRepository;
+    private final NutritionalProfileRepository nutritionalProfileRepository;
+    private final AssessmentRepository assessmentRepository;
 
     @Transactional(readOnly = true)
-    public AiRecommendationContext build(Integer usuarioId) {
-        User user = userService.findById(usuarioId);
+    public AiRecommendationContext build(Integer userId) {
+        User user = userService.findById(userId);
 
-        Perfil perfil = perfilRepository.findByUsuarioId(user.getId())
+        NutritionalProfile profile = nutritionalProfileRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IncompleteProfileException(
                         "perfil",
                         "Perfil nutricional não encontrado. Complete seu perfil antes de solicitar recomendações."));
 
-        Triagem triagem = triagemRepository.findByUsuarioId(user.getId())
+        Assessment assessment = assessmentRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new IncompleteProfileException(
                         "triagem",
                         "Triagem não encontrada. Complete sua triagem antes de solicitar recomendações."));
 
         return new AiRecommendationContext(
-                buildUsuarioContext(user),
-                buildPerfilContext(perfil),
-                buildTriagemContext(triagem)
+                buildUserContext(user),
+                buildProfileContext(profile),
+                buildAssessmentContext(assessment)
         );
     }
 
-    private AiUsuarioContext buildUsuarioContext(User user) {
-        return new AiUsuarioContext(user.getNome());
+    private AiUsuarioContext buildUserContext(User user) {
+        return new AiUsuarioContext(user.getName());
     }
 
-    private AiPerfilContext buildPerfilContext(Perfil perfil) {
+    private AiPerfilContext buildProfileContext(NutritionalProfile profile) {
         return new AiPerfilContext(
-                perfil.getSexo().name(),
-                perfil.calcularIdade(LocalDate.now()),
-                perfil.getPesoKg(),
-                perfil.getAlturaCm(),
-                perfil.getNivelAtividade().name()
+                profile.getGender().name(),
+                profile.calculateAge(LocalDate.now()),
+                profile.getWeightKg(),
+                profile.getHeightCm(),
+                profile.getActivityLevel().name()
         );
     }
 
-    private AiTriagemContext buildTriagemContext(Triagem triagem) {
+    private AiTriagemContext buildAssessmentContext(Assessment assessment) {
         return new AiTriagemContext(
-                triagem.getObjetivo().name(),
-                normalizeList(triagem.getRestricoesAlimentares()),
-                normalizeList(triagem.getAlergias()),
-                normalizeList(triagem.getCondicoesSaude())
+                assessment.getGoal().name(),
+                normalizeList(assessment.getDietaryRestrictions()),
+                normalizeList(assessment.getAllergies()),
+                normalizeList(assessment.getHealthConditions())
         );
     }
 
-    private List<String> normalizeList(String valor) {
-        if (valor == null || valor.isBlank()) {
+    private List<String> normalizeList(String value) {
+        if (value == null || value.isBlank()) {
             return Collections.emptyList();
         }
 
-        return Arrays.stream(valor.split("[,;]+"))
+        return Arrays.stream(value.split("[,;]+"))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toCollection(LinkedHashSet::new))

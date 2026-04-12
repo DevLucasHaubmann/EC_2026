@@ -1,6 +1,6 @@
 package com.tukan.api.dto;
 
-import com.tukan.api.entity.Perfil;
+import com.tukan.api.entity.NutritionalProfile;
 
 public record PerfilCreatedResponse(
         PerfilResponse perfil,
@@ -8,9 +8,9 @@ public record PerfilCreatedResponse(
         String nextStep
 ) {
 
-    public static PerfilCreatedResponse of(Perfil perfil, OnboardingStatus onboarding) {
+    public static PerfilCreatedResponse of(NutritionalProfile profile, OnboardingStatus onboarding) {
         return new PerfilCreatedResponse(
-                PerfilResponse.from(perfil),
+                PerfilResponse.from(profile),
                 onboarding.onboardingRequired(),
                 onboarding.nextStep()
         );

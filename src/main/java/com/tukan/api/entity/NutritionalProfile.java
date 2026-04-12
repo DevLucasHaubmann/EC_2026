@@ -16,14 +16,14 @@ import java.time.Period;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Perfil {
+public class NutritionalProfile {
 
-    public enum Sexo {
+    public enum Gender {
         MASCULINO,
         FEMININO
     }
 
-    public enum NivelAtividade {
+    public enum ActivityLevel {
         SEDENTARIO,
         LEVE,
         MODERADO,
@@ -37,42 +37,42 @@ public class Perfil {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false, unique = true)
-    private User usuario;
+    private User user;
 
     @Column(name = "data_nascimento", nullable = false)
-    private LocalDate dataNascimento;
+    private LocalDate dateOfBirth;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "sexo", nullable = false)
-    private Sexo sexo;
+    private Gender gender;
 
     @Column(name = "peso_kg", nullable = false)
-    private Double pesoKg;
+    private Double weightKg;
 
     @Column(name = "altura_cm", nullable = false)
-    private Double alturaCm;
+    private Double heightCm;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "nivel_atividade", nullable = false)
-    private NivelAtividade nivelAtividade;
+    private ActivityLevel activityLevel;
 
     @Column(name = "criado_em", nullable = false, updatable = false)
-    private Instant criadoEm;
+    private Instant createdAt;
 
     @Column(name = "atualizado_em")
-    private Instant atualizadoEm;
+    private Instant updatedAt;
 
-    public int calcularIdade(LocalDate referencia) {
-        return Period.between(this.dataNascimento, referencia).getYears();
+    public int calculateAge(LocalDate reference) {
+        return Period.between(this.dateOfBirth, reference).getYears();
     }
 
     @PrePersist
     protected void onCreate() {
-        this.criadoEm = Instant.now();
+        this.createdAt = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        this.atualizadoEm = Instant.now();
+        this.updatedAt = Instant.now();
     }
 }

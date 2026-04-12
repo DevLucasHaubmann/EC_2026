@@ -1,6 +1,7 @@
 package com.tukan.api.dto;
 
-import com.tukan.api.entity.Perfil;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.tukan.api.entity.NutritionalProfile;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 
@@ -14,6 +15,7 @@ public record UpdatePerfilRequest(
         @DecimalMax(value = "300.0", message = "A altura máxima aceita é 300 cm.")
         Double alturaCm,
 
-        Perfil.NivelAtividade nivelAtividade
+        @JsonProperty("nivelAtividade")
+        NutritionalProfile.ActivityLevel activityLevel
 ) {
 }

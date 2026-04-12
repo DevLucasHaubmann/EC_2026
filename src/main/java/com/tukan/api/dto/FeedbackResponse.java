@@ -1,26 +1,37 @@
 package com.tukan.api.dto;
 
-import com.tukan.api.entity.FeedbackRecomendacao;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.tukan.api.entity.RecommendationFeedback;
 
 import java.time.Instant;
 
 public record FeedbackResponse(
         Integer id,
-        Integer recomendacaoId,
-        FeedbackRecomendacao.Avaliacao avaliacao,
-        String motivo,
-        String observacao,
-        Instant criadoEm
+
+        @JsonProperty("recomendacaoId")
+        Integer recommendationId,
+
+        @JsonProperty("avaliacao")
+        RecommendationFeedback.Rating rating,
+
+        @JsonProperty("motivo")
+        String reason,
+
+        @JsonProperty("observacao")
+        String observation,
+
+        @JsonProperty("criadoEm")
+        Instant createdAt
 ) {
 
-    public static FeedbackResponse from(FeedbackRecomendacao feedback) {
+    public static FeedbackResponse from(RecommendationFeedback feedback) {
         return new FeedbackResponse(
                 feedback.getId(),
-                feedback.getRecomendacao().getId(),
-                feedback.getAvaliacao(),
-                feedback.getMotivo(),
-                feedback.getObservacao(),
-                feedback.getCriadoEm()
+                feedback.getRecommendation().getId(),
+                feedback.getRating(),
+                feedback.getReason(),
+                feedback.getObservation(),
+                feedback.getCreatedAt()
         );
     }
 }

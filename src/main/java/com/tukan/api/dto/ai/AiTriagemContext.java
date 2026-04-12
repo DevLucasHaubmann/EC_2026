@@ -1,11 +1,20 @@
 package com.tukan.api.dto.ai;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
 public record AiTriagemContext(
-        String objetivo,
-        List<String> restricoesAlimentares,
-        List<String> alergias,
-        List<String> condicoesSaude
+        @JsonProperty("objetivo")
+        String goal,
+
+        @JsonProperty("restricoesAlimentares")
+        List<String> dietaryRestrictions,
+
+        @JsonProperty("alergias")
+        List<String> allergies,
+
+        @JsonProperty("condicoesSaude")
+        List<String> healthConditions
 ) {
 }

@@ -1,6 +1,9 @@
 package com.tukan.api.dto.ai;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public record AiUsuarioContext(
-        String nome
+        @JsonProperty("nome")
+        String name
 ) {
 }
