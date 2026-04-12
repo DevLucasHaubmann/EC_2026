@@ -22,7 +22,7 @@ public class StubAiProviderClient implements AiProviderClient {
             """;
 
     @Override
-    public String send(String systemPrompt, String userPrompt) {
-        return STUB_RESPONSE;
+    public AiProviderResult send(String systemPrompt, String userPrompt) {
+        return new AiProviderResult(STUB_RESPONSE, "stub", "stub");
     }
 }

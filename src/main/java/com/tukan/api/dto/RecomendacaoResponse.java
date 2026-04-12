@@ -39,7 +39,8 @@ public record RecomendacaoResponse(
         try {
             return MAPPER.readValue(json, new TypeReference<>() {});
         } catch (Exception e) {
-            return List.of();
+            throw new IllegalStateException(
+                    "Dado persistido em formato inválido. Valor: " + json, e);
         }
     }
 }

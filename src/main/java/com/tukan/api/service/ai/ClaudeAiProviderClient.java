@@ -23,7 +23,7 @@ public class ClaudeAiProviderClient implements AiProviderClient {
     private final AiProperties aiProperties;
 
     @Override
-    public String send(String systemPrompt, String userPrompt) {
+    public AiProviderResult send(String systemPrompt, String userPrompt) {
         AiProperties.Claude claude = aiProperties.getClaude();
 
         validateApiKey(claude.getApiKey());
@@ -46,7 +46,8 @@ public class ClaudeAiProviderClient implements AiProviderClient {
                     .retrieve()
                     .body(ClaudeMessageResponse.class);
 
-            return extractText(response);
+            String content = extractText(response);
+            return new AiProviderResult(content, "claude", claude.getModel());
         } catch (RestClientException e) {
             throw new AiProviderException("Falha na comunicação com o provider Claude: " + e.getMessage(), e);
         }

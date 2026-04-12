@@ -16,6 +16,9 @@ public interface RecomendacaoRepository extends JpaRepository<Recomendacao, Inte
     @EntityGraph(attributePaths = "usuario")
     List<Recomendacao> findByUsuarioIdOrderByCriadoEmDesc(Integer usuarioId);
 
+    @EntityGraph(attributePaths = "usuario")
+    Optional<Recomendacao> findByIdAndUsuarioId(Integer id, Integer usuarioId);
+
     @Override
     @EntityGraph(attributePaths = "usuario")
     @NonNull

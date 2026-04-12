@@ -2,7 +2,6 @@ package com.tukan.api.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tukan.api.config.AiProperties;
 import com.tukan.api.dto.ai.AiRecommendationContext;
 import com.tukan.api.dto.ai.AiRecommendationResponse;
 import com.tukan.api.entity.Recomendacao;
@@ -12,6 +11,7 @@ import com.tukan.api.exception.BusinessException;
 import com.tukan.api.repository.RecomendacaoRepository;
 import com.tukan.api.service.ai.AiPromptBuilder;
 import com.tukan.api.service.ai.AiProviderClient;
+import com.tukan.api.service.ai.AiProviderResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,6 @@ public class AiRecommendationService {
     private final AiPromptBuilder aiPromptBuilder;
     private final AiProviderClient aiProviderClient;
     private final RecomendacaoRepository recomendacaoRepository;
-    private final AiProperties aiProperties;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -40,11 +39,11 @@ public class AiRecommendationService {
         String systemPrompt = aiPromptBuilder.buildSystemPrompt();
         String userPrompt = aiPromptBuilder.buildUserPrompt(contexto);
 
-        String rawResponse = aiProviderClient.send(systemPrompt, userPrompt);
+        AiProviderResult providerResult = aiProviderClient.send(systemPrompt, userPrompt);
 
-        AiRecommendationResponse parsed = parseResponse(rawResponse);
+        AiRecommendationResponse parsed = parseResponse(providerResult.content());
 
-        Recomendacao recomendacao = toEntity(usuario, parsed, contexto);
+        Recomendacao recomendacao = toEntity(usuario, parsed, contexto, providerResult);
         return recomendacaoRepository.save(recomendacao);
     }
 
@@ -65,27 +64,21 @@ public class AiRecommendationService {
     @Transactional(readOnly = true)
     public Recomendacao findById(Integer id, String authenticatedEmail) {
         Integer usuarioId = userService.findByEmail(authenticatedEmail).getId();
-        Recomendacao recomendacao = recomendacaoRepository.findById(id)
+        return recomendacaoRepository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new BusinessException(
                         "Recomendação não encontrada.", HttpStatus.NOT_FOUND));
-
-        if (!recomendacao.getUsuario().getId().equals(usuarioId)) {
-            throw new BusinessException("Acesso negado a esta recomendação.", HttpStatus.FORBIDDEN);
-        }
-
-        return recomendacao;
     }
 
     private Recomendacao toEntity(User usuario, AiRecommendationResponse response,
-                                   AiRecommendationContext contexto) {
+                                   AiRecommendationContext contexto, AiProviderResult providerResult) {
         Recomendacao recomendacao = new Recomendacao();
         recomendacao.setUsuario(usuario);
         recomendacao.setResumo(response.resumo());
         recomendacao.setRecomendacoes(toJson(response.recomendacoes()));
         recomendacao.setAlertas(toJson(response.alertas()));
         recomendacao.setContextoJson(toJson(contexto));
-        recomendacao.setProvider(aiProperties.getProvider());
-        recomendacao.setModel(aiProperties.getClaude().getModel());
+        recomendacao.setProvider(providerResult.provider());
+        recomendacao.setModel(providerResult.model());
         recomendacao.setStatus(Recomendacao.StatusRecomendacao.GERADA);
         return recomendacao;
     }
