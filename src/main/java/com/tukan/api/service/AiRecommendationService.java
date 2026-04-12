@@ -34,9 +34,16 @@ public class AiRecommendationService {
     private final FeedbackRecomendacaoRepository feedbackRecomendacaoRepository;
     private final ObjectMapper objectMapper;
 
+    private static final List<Recomendacao.StatusRecomendacao> ACTIVE_STATUSES = List.of(
+            Recomendacao.StatusRecomendacao.GERADA,
+            Recomendacao.StatusRecomendacao.VISUALIZADA
+    );
+
     @Transactional
     public Recomendacao generateAndSave(String authenticatedEmail) {
         User usuario = userService.findByEmail(authenticatedEmail);
+
+        archiveActiveRecommendations(usuario.getId());
 
         AiRecommendationContext contexto = aiContextService.build(usuario.getId());
 
@@ -49,6 +56,17 @@ public class AiRecommendationService {
 
         Recomendacao recomendacao = toEntity(usuario, parsed, contexto, providerResult);
         return recomendacaoRepository.save(recomendacao);
+    }
+
+    private void archiveActiveRecommendations(Integer usuarioId) {
+        List<Recomendacao> activeRecommendations = recomendacaoRepository
+                .findByUsuarioIdAndStatusIn(usuarioId, ACTIVE_STATUSES);
+
+        for (Recomendacao rec : activeRecommendations) {
+            rec.setStatus(Recomendacao.StatusRecomendacao.ARQUIVADA);
+        }
+
+        recomendacaoRepository.saveAll(activeRecommendations);
     }
 
     @Transactional(readOnly = true)

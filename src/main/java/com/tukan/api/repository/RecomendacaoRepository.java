@@ -1,6 +1,7 @@
 package com.tukan.api.repository;
 
 import com.tukan.api.entity.Recomendacao;
+import com.tukan.api.entity.Recomendacao.StatusRecomendacao;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.lang.NonNull;
@@ -18,6 +19,8 @@ public interface RecomendacaoRepository extends JpaRepository<Recomendacao, Inte
 
     @EntityGraph(attributePaths = "usuario")
     Optional<Recomendacao> findByIdAndUsuarioId(Integer id, Integer usuarioId);
+
+    List<Recomendacao> findByUsuarioIdAndStatusIn(Integer usuarioId, List<StatusRecomendacao> statuses);
 
     @Override
     @EntityGraph(attributePaths = "usuario")
