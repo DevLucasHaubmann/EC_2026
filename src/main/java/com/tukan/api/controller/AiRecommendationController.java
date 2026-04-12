@@ -1,8 +1,12 @@
 package com.tukan.api.controller;
 
+import com.tukan.api.dto.FeedbackRequest;
+import com.tukan.api.dto.FeedbackResponse;
 import com.tukan.api.dto.RecomendacaoResponse;
+import com.tukan.api.entity.FeedbackRecomendacao;
 import com.tukan.api.entity.Recomendacao;
 import com.tukan.api.service.AiRecommendationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +45,26 @@ public class AiRecommendationController {
     @GetMapping("/ai/recommendations/{id}")
     public ResponseEntity<RecomendacaoResponse> getById(@PathVariable Integer id, Authentication authentication) {
         Recomendacao recomendacao = aiRecommendationService.findById(id, authentication.getName());
+        return ResponseEntity.ok(RecomendacaoResponse.from(recomendacao));
+    }
+
+    @PatchMapping("/ai/recommendations/{id}/viewed")
+    public ResponseEntity<RecomendacaoResponse> markAsViewed(@PathVariable Integer id, Authentication authentication) {
+        Recomendacao recomendacao = aiRecommendationService.markAsViewed(id, authentication.getName());
+        return ResponseEntity.ok(RecomendacaoResponse.from(recomendacao));
+    }
+
+    @PostMapping("/ai/recommendations/{id}/feedback")
+    public ResponseEntity<FeedbackResponse> addFeedback(@PathVariable Integer id,
+                                                         @Valid @RequestBody FeedbackRequest request,
+                                                         Authentication authentication) {
+        FeedbackRecomendacao feedback = aiRecommendationService.addFeedback(id, authentication.getName(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(FeedbackResponse.from(feedback));
+    }
+
+    @PatchMapping("/ai/recommendations/{id}/archive")
+    public ResponseEntity<RecomendacaoResponse> archive(@PathVariable Integer id, Authentication authentication) {
+        Recomendacao recomendacao = aiRecommendationService.archive(id, authentication.getName());
         return ResponseEntity.ok(RecomendacaoResponse.from(recomendacao));
     }
 }

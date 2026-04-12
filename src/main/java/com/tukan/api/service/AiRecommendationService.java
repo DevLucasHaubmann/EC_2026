@@ -4,10 +4,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tukan.api.dto.ai.AiRecommendationContext;
 import com.tukan.api.dto.ai.AiRecommendationResponse;
+import com.tukan.api.dto.FeedbackRequest;
+import com.tukan.api.entity.FeedbackRecomendacao;
 import com.tukan.api.entity.Recomendacao;
 import com.tukan.api.entity.User;
 import com.tukan.api.exception.AiProviderException;
 import com.tukan.api.exception.BusinessException;
+import com.tukan.api.repository.FeedbackRecomendacaoRepository;
 import com.tukan.api.repository.RecomendacaoRepository;
 import com.tukan.api.service.ai.AiPromptBuilder;
 import com.tukan.api.service.ai.AiProviderClient;
@@ -28,6 +31,7 @@ public class AiRecommendationService {
     private final AiPromptBuilder aiPromptBuilder;
     private final AiProviderClient aiProviderClient;
     private final RecomendacaoRepository recomendacaoRepository;
+    private final FeedbackRecomendacaoRepository feedbackRecomendacaoRepository;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -63,6 +67,54 @@ public class AiRecommendationService {
 
     @Transactional(readOnly = true)
     public Recomendacao findById(Integer id, String authenticatedEmail) {
+        return findByIdAndOwner(id, authenticatedEmail);
+    }
+
+    @Transactional
+    public Recomendacao markAsViewed(Integer id, String authenticatedEmail) {
+        Recomendacao recomendacao = findByIdAndOwner(id, authenticatedEmail);
+
+        if (recomendacao.getStatus() != Recomendacao.StatusRecomendacao.GERADA) {
+            throw new BusinessException(
+                    "Apenas recomendações com status GERADA podem ser marcadas como visualizadas.",
+                    HttpStatus.CONFLICT);
+        }
+
+        recomendacao.setStatus(Recomendacao.StatusRecomendacao.VISUALIZADA);
+        return recomendacaoRepository.save(recomendacao);
+    }
+
+    @Transactional
+    public FeedbackRecomendacao addFeedback(Integer id, String authenticatedEmail, FeedbackRequest request) {
+        Recomendacao recomendacao = findByIdAndOwner(id, authenticatedEmail);
+
+        if (feedbackRecomendacaoRepository.existsByRecomendacaoId(id)) {
+            throw new BusinessException(
+                    "Esta recomendação já possui feedback registrado.", HttpStatus.CONFLICT);
+        }
+
+        FeedbackRecomendacao feedback = new FeedbackRecomendacao();
+        feedback.setRecomendacao(recomendacao);
+        feedback.setAvaliacao(request.avaliacao());
+        feedback.setMotivo(request.motivo());
+        feedback.setObservacao(request.observacao());
+        return feedbackRecomendacaoRepository.save(feedback);
+    }
+
+    @Transactional
+    public Recomendacao archive(Integer id, String authenticatedEmail) {
+        Recomendacao recomendacao = findByIdAndOwner(id, authenticatedEmail);
+
+        if (recomendacao.getStatus() == Recomendacao.StatusRecomendacao.ARQUIVADA) {
+            throw new BusinessException(
+                    "Esta recomendação já está arquivada.", HttpStatus.CONFLICT);
+        }
+
+        recomendacao.setStatus(Recomendacao.StatusRecomendacao.ARQUIVADA);
+        return recomendacaoRepository.save(recomendacao);
+    }
+
+    private Recomendacao findByIdAndOwner(Integer id, String authenticatedEmail) {
         Integer usuarioId = userService.findByEmail(authenticatedEmail).getId();
         return recomendacaoRepository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new BusinessException(
