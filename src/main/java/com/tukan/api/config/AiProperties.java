@@ -18,19 +18,17 @@ public class AiProperties {
     private String provider = "stub";
 
     @Valid
-    private Claude claude = new Claude();
+    private Gemini gemini = new Gemini();
 
     @Getter
     @Setter
-    public static class Claude {
+    public static class Gemini {
         private String apiKey;
         @NotBlank
-        private String baseUrl = "https://api.anthropic.com";
-        @NotBlank
-        private String model = "claude-sonnet-4-20250514";
+        private String model = "gemini-3.1-flash-lite-preview";
         @Positive
         private int maxTokens = 1024;
-        private double temperature = 0.4;
+        private double temperature = 0.3;
         @Positive
         private int timeoutSeconds = 30;
     }
