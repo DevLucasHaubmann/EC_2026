@@ -12,11 +12,12 @@ import java.util.Map;
 @Component
 public class MealDistributor {
 
+    // Proporções definidas pela regra de produto (20/35/15/30)
     private static final Map<String, Double> MEAL_PROPORTIONS = Map.of(
-            "CAFE_MANHA", 0.25,
+            "CAFE_MANHA", 0.20,
             "ALMOCO", 0.35,
             "LANCHE_TARDE", 0.15,
-            "JANTA", 0.25
+            "JANTA", 0.30
     );
 
     public Map<String, Double> distribute(double dailyCalories) {

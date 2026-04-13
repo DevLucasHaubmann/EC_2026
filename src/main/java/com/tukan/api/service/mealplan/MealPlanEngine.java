@@ -2,7 +2,7 @@ package com.tukan.api.service.mealplan;
 
 import com.tukan.api.dto.ai.AiPerfilContext;
 import com.tukan.api.dto.ai.AiTriagemContext;
-import com.tukan.api.dto.mealplan.MealPlanContext;
+import com.tukan.api.dto.mealplan.*;
 import com.tukan.api.dto.mealplan.MealPlanContext.EligibleFoodSummary;
 import com.tukan.api.entity.Assessment;
 import com.tukan.api.entity.Food;
@@ -31,8 +31,9 @@ import java.util.stream.Collectors;
  * 2. Calcular meta calórica via CalorieCalculator
  * 3. Distribuir kcal entre refeições via MealDistributor
  * 4. Filtrar alimentos elegíveis via FoodFilterService
- * 5. Agrupar alimentos por refeição
- * 6. Montar o MealPlanContext pronto para consumo (IA ou direto)
+ * 5. Selecionar alimentos com variedade via FoodSelector
+ * 6. Montar DailyMealPlan completo (4 refeições × 2 opções)
+ * 7. Montar MealPlanContext compacto para envio à IA
  */
 @Service
 @RequiredArgsConstructor
@@ -44,11 +45,65 @@ public class MealPlanEngine {
     private final CalorieCalculator calorieCalculator;
     private final FoodFilterService foodFilterService;
     private final MealDistributor mealDistributor;
+    private final FoodSelector foodSelector;
 
-    private static final int MAX_FOODS_PER_MEAL = 30;
+    private static final int MAX_FOODS_PER_MEAL_CONTEXT = 30;
+
+    @Transactional(readOnly = true)
+    public DailyMealPlan generatePlan(String authenticatedEmail) {
+        UserProfileData data = loadUserData(authenticatedEmail);
+
+        double dailyCalories = calorieCalculator.calculateDailyCalorieTarget(
+                data.profile, data.assessment, data.age);
+        Map<String, Double> distribution = mealDistributor.distribute(dailyCalories);
+
+        List<Food> eligible = foodFilterService.findEligibleFoods(data.assessment);
+        validateEligibleFoods(eligible);
+
+        Map<String, List<Food>> grouped = foodFilterService.groupByMealType(eligible);
+
+        List<MealPlanMeal> meals = new ArrayList<>();
+        for (var entry : distribution.entrySet()) {
+            String mealType = entry.getKey();
+            double target = entry.getValue();
+            List<Food> mealFoods = grouped.getOrDefault(mealType, List.of());
+
+            List<FoodSelector.MealOptionBuild> options = foodSelector.buildTwoOptions(mealFoods, target);
+            meals.add(toMealPlanMeal(mealType, target, options));
+        }
+
+        return new DailyMealPlan(Math.round(dailyCalories), data.assessment.getGoal().name(), meals);
+    }
 
     @Transactional(readOnly = true)
     public MealPlanContext buildContext(String authenticatedEmail) {
+        UserProfileData data = loadUserData(authenticatedEmail);
+
+        double dailyCalories = calorieCalculator.calculateDailyCalorieTarget(
+                data.profile, data.assessment, data.age);
+        Map<String, Double> distribution = mealDistributor.distribute(dailyCalories);
+
+        List<Food> eligible = foodFilterService.findEligibleFoods(data.assessment);
+        validateEligibleFoods(eligible);
+
+        Map<String, List<Food>> grouped = foodFilterService.groupByMealType(eligible);
+        Map<String, List<EligibleFoodSummary>> foodsByMeal = buildFoodSummaries(grouped);
+
+        AiPerfilContext profileCtx = new AiPerfilContext(
+                data.profile.getGender().name(),
+                data.age,
+                data.profile.getWeightKg(),
+                data.profile.getHeightCm(),
+                data.profile.getActivityLevel().name()
+        );
+
+        AiTriagemContext assessmentCtx = buildTriagemContext(data.assessment);
+
+        return new MealPlanContext(profileCtx, assessmentCtx,
+                Math.round(dailyCalories), distribution, foodsByMeal);
+    }
+
+    private UserProfileData loadUserData(String authenticatedEmail) {
         User user = userService.findByEmail(authenticatedEmail);
 
         NutritionalProfile profile = profileRepository.findByUserId(user.getId())
@@ -66,49 +121,57 @@ public class MealPlanEngine {
             throw new BusinessException("Idade inválida para cálculo nutricional.", HttpStatus.UNPROCESSABLE_ENTITY);
         }
 
-        double dailyCalories = calorieCalculator.calculateDailyCalorieTarget(profile, assessment, age);
-        Map<String, Double> distribution = mealDistributor.distribute(dailyCalories);
+        return new UserProfileData(user, profile, assessment, age);
+    }
 
-        List<Food> eligible = foodFilterService.findEligibleFoods(assessment);
+    private void validateEligibleFoods(List<Food> eligible) {
         if (eligible.isEmpty()) {
             throw new BusinessException(
                     "Nenhum alimento compatível encontrado com as restrições informadas.",
                     HttpStatus.UNPROCESSABLE_ENTITY);
         }
+    }
 
-        Map<String, List<Food>> grouped = foodFilterService.groupByMealType(eligible);
-        Map<String, List<EligibleFoodSummary>> foodsByMeal = buildFoodSummaries(grouped, distribution);
+    private MealPlanMeal toMealPlanMeal(String mealType, double target,
+                                         List<FoodSelector.MealOptionBuild> builds) {
+        List<MealOption> options = builds.stream()
+                .map(this::toMealOption)
+                .toList();
+        return new MealPlanMeal(mealType, target, options);
+    }
 
-        AiPerfilContext profileCtx = new AiPerfilContext(
-                profile.getGender().name(),
-                age,
-                profile.getWeightKg(),
-                profile.getHeightCm(),
-                profile.getActivityLevel().name()
-        );
-
-        AiTriagemContext assessmentCtx = buildTriagemContext(assessment);
-
-        return new MealPlanContext(profileCtx, assessmentCtx, Math.round(dailyCalories), distribution, foodsByMeal);
+    private MealOption toMealOption(FoodSelector.MealOptionBuild build) {
+        List<MealPlanFoodItem> items = build.items().stream()
+                .map(p -> new MealPlanFoodItem(
+                        p.foodId(), p.name(), p.category(),
+                        p.portionGrams(),
+                        BigDecimal.valueOf(p.calories()),
+                        BigDecimal.valueOf(p.protein()),
+                        BigDecimal.valueOf(p.carbs()),
+                        BigDecimal.valueOf(p.fat()),
+                        BigDecimal.valueOf(p.fiber())))
+                .toList();
+        return new MealOption(build.optionNumber(), items,
+                build.totalCalories(), build.totalProtein(),
+                build.totalCarbs(), build.totalFat());
     }
 
     private Map<String, List<EligibleFoodSummary>> buildFoodSummaries(
-            Map<String, List<Food>> grouped, Map<String, Double> distribution) {
+            Map<String, List<Food>> grouped) {
 
         Map<String, List<EligibleFoodSummary>> result = new LinkedHashMap<>();
 
         for (var entry : grouped.entrySet()) {
-            String mealType = entry.getKey();
             List<Food> foods = entry.getValue();
+            List<Food> shuffled = new ArrayList<>(foods);
+            Collections.shuffle(shuffled);
 
-            List<EligibleFoodSummary> summaries = foods.stream()
-                    .sorted(Comparator.comparing(
-                            (Food f) -> f.getCategory() == null ? "" : f.getCategory()))
-                    .limit(MAX_FOODS_PER_MEAL)
+            List<EligibleFoodSummary> summaries = shuffled.stream()
+                    .limit(MAX_FOODS_PER_MEAL_CONTEXT)
                     .map(this::toSummary)
                     .collect(Collectors.toList());
 
-            result.put(mealType, summaries);
+            result.put(entry.getKey(), summaries);
         }
 
         return result;
@@ -148,4 +211,7 @@ public class MealPlanEngine {
                 .distinct()
                 .toList();
     }
+
+    private record UserProfileData(User user, NutritionalProfile profile,
+                                    Assessment assessment, int age) {}
 }
