@@ -44,6 +44,9 @@ public class MealPlanEngine {
     private final AssessmentRepository assessmentRepository;
     private final CalorieCalculator calorieCalculator;
     private final FoodFilterService foodFilterService;
+    private final FoodCurationService foodCurationService;
+    private final MealSuitabilityService mealSuitabilityService;
+    private final FoodDisplayNameService foodDisplayNameService;
     private final MealDistributor mealDistributor;
     private final FoodSelector foodSelector;
 
@@ -58,6 +61,7 @@ public class MealPlanEngine {
         Map<String, Double> distribution = mealDistributor.distribute(dailyCalories);
 
         List<Food> eligible = foodFilterService.findEligibleFoods(data.assessment);
+        eligible = foodCurationService.curate(eligible);
         validateEligibleFoods(eligible);
 
         Map<String, List<Food>> grouped = foodFilterService.groupByMealType(eligible);
@@ -68,6 +72,7 @@ public class MealPlanEngine {
             String mealType = entry.getKey();
             double target = entry.getValue();
             List<Food> mealFoods = grouped.getOrDefault(mealType, List.of());
+            mealFoods = mealSuitabilityService.filterAndPrioritize(mealFoods, mealType);
 
             List<FoodSelector.MealOptionBuild> options = foodSelector.buildTwoOptions(mealFoods, target);
             meals.add(toMealPlanMeal(mealType, target, options));
@@ -85,6 +90,7 @@ public class MealPlanEngine {
         Map<String, Double> distribution = mealDistributor.distribute(dailyCalories);
 
         List<Food> eligible = foodFilterService.findEligibleFoods(data.assessment);
+        eligible = foodCurationService.curate(eligible);
         validateEligibleFoods(eligible);
 
         Map<String, List<Food>> grouped = foodFilterService.groupByMealType(eligible);
@@ -158,8 +164,9 @@ public class MealPlanEngine {
     private MealOption toMealOption(FoodSelector.MealOptionBuild build) {
         List<MealPlanFoodItem> items = build.items().stream()
                 .map(p -> new MealPlanFoodItem(
-                        p.foodId(), p.name(), p.category(),
-                        p.portionGrams(),
+                        p.foodId(), p.name(),
+                        foodDisplayNameService.generateDisplayName(p.name()),
+                        p.category(), p.portionGrams(),
                         BigDecimal.valueOf(p.calories()),
                         BigDecimal.valueOf(p.protein()),
                         BigDecimal.valueOf(p.carbs()),

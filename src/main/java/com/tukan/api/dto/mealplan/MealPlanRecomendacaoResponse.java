@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 public record MealPlanRecomendacaoResponse(
+        String status,
         @JsonProperty("resumo") String summary,
         @JsonProperty("plano") DailyMealPlan plan,
         @JsonProperty("explicacaoRefeicoes") Map<String, String> mealExplanations,

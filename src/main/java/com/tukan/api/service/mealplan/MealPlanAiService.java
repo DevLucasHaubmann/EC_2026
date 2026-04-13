@@ -38,6 +38,7 @@ public class MealPlanAiService {
             MealPlanAiResponse aiResponse = parseResponse(providerResult.content());
 
             return new MealPlanRecomendacaoResponse(
+                    "COMPLETO",
                     aiResponse.summary(),
                     plan,
                     aiResponse.mealExplanations(),
@@ -54,6 +55,7 @@ public class MealPlanAiService {
 
     private MealPlanRecomendacaoResponse buildFallbackResponse(DailyMealPlan plan) {
         return new MealPlanRecomendacaoResponse(
+                "PARCIAL",
                 "Plano alimentar gerado com sucesso. O complemento da IA está temporariamente indisponível.",
                 plan,
                 Map.of(),

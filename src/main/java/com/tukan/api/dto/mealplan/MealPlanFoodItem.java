@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 public record MealPlanFoodItem(
         @JsonProperty("alimentoId") Integer foodId,
         @JsonProperty("nome") String name,
+        @JsonProperty("nomeExibicao") String displayName,
         @JsonProperty("categoria") String category,
         @JsonProperty("porcaoG") BigDecimal portionGrams,
         @JsonProperty("calorias") BigDecimal calories,
