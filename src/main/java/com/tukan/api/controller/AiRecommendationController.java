@@ -21,13 +21,13 @@ public class AiRecommendationController {
 
     private final AiRecommendationService aiRecommendationService;
 
-    @PostMapping("/ai/recommendation/me")
+    @PostMapping("/ai/recommendations/me")
     public ResponseEntity<RecomendacaoResponse> generateRecommendation(Authentication authentication) {
         Recommendation recommendation = aiRecommendationService.generateAndSave(authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(RecomendacaoResponse.from(recommendation));
     }
 
-    @GetMapping("/ai/recommendation/me/latest")
+    @GetMapping("/ai/recommendations/me/latest")
     public ResponseEntity<RecomendacaoResponse> getLatest(Authentication authentication) {
         Recommendation recommendation = aiRecommendationService.findLatest(authentication.getName());
         return ResponseEntity.ok(RecomendacaoResponse.from(recommendation));
