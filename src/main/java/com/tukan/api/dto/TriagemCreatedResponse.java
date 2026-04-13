@@ -1,6 +1,6 @@
 package com.tukan.api.dto;
 
-import com.tukan.api.entity.Triagem;
+import com.tukan.api.entity.Assessment;
 
 public record TriagemCreatedResponse(
         TriagemResponse triagem,
@@ -8,9 +8,9 @@ public record TriagemCreatedResponse(
         String nextStep
 ) {
 
-    public static TriagemCreatedResponse of(Triagem triagem, OnboardingStatus onboarding) {
+    public static TriagemCreatedResponse of(Assessment assessment, OnboardingStatus onboarding) {
         return new TriagemCreatedResponse(
-                TriagemResponse.from(triagem),
+                TriagemResponse.from(assessment),
                 onboarding.onboardingRequired(),
                 onboarding.nextStep()
         );

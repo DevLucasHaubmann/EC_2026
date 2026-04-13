@@ -24,35 +24,35 @@ public class UserSession {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
-    private User usuario;
+    private User user;
 
     @Column(name = "refresh_token_hash", nullable = false, length = 64)
     private String refreshTokenHash;
 
     @Column(name = "criado_em", nullable = false, updatable = false)
-    private Instant criadoEm;
+    private Instant createdAt;
 
     @Column(name = "expira_em", nullable = false)
-    private Instant expiraEm;
+    private Instant expiresAt;
 
     @Column(name = "revogado_em")
-    private Instant revogadoEm;
+    private Instant revokedAt;
 
     @Column(name = "ultimo_uso_em", nullable = false)
-    private Instant ultimoUsoEm;
+    private Instant lastUsedAt;
 
     @Column(name = "dispositivo", length = 255)
-    private String dispositivo;
+    private String device;
 
     @Column(name = "endereco_ip", length = 45)
-    private String enderecoIp;
+    private String ipAddress;
 
     public boolean isExpired() {
-        return Instant.now().isAfter(expiraEm);
+        return Instant.now().isAfter(expiresAt);
     }
 
     public boolean isRevoked() {
-        return revogadoEm != null;
+        return revokedAt != null;
     }
 
     public boolean isActive() {

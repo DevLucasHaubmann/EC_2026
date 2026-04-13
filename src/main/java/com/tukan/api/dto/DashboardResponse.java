@@ -1,86 +1,107 @@
 package com.tukan.api.dto;
 
-import com.tukan.api.entity.Perfil;
-import com.tukan.api.entity.Triagem;
-import com.tukan.api.service.MeService.DadosUsuarioAutenticado;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.tukan.api.entity.NutritionalProfile;
+import com.tukan.api.entity.Assessment;
+import com.tukan.api.service.MeService.AuthenticatedUserData;
 
 import java.time.LocalDate;
-import java.time.Period;
 
 public record DashboardResponse(
-        String nome,
-        ResumoPerfilResponse perfil,
-        ResumoTriagemResponse triagem,
+        @JsonProperty("nome")
+        String name,
+
+        @JsonProperty("perfil")
+        ProfileSummaryResponse profile,
+
+        @JsonProperty("triagem")
+        AssessmentSummaryResponse assessment,
+
         OnboardingStatus onboarding
 ) {
 
-    public static DashboardResponse from(DadosUsuarioAutenticado dados, OnboardingStatus onboarding) {
+    public static DashboardResponse from(AuthenticatedUserData data, OnboardingStatus onboarding) {
         return new DashboardResponse(
-                dados.user().getNome(),
-                dados.perfil() != null ? ResumoPerfilResponse.from(dados.perfil()) : null,
-                dados.triagem() != null ? ResumoTriagemResponse.from(dados.triagem()) : null,
+                data.user().getName(),
+                data.profile() != null ? ProfileSummaryResponse.from(data.profile()) : null,
+                data.assessment() != null ? AssessmentSummaryResponse.from(data.assessment()) : null,
                 onboarding
         );
     }
 
-    public record ResumoPerfilResponse(
+    public record ProfileSummaryResponse(
             Double pesoKg,
             Double alturaCm,
             Double imc,
-            String classificacaoImc,
-            Perfil.NivelAtividade nivelAtividade,
-            Perfil.Sexo sexo,
-            Integer idade
+
+            @JsonProperty("classificacaoImc")
+            String bmiClassification,
+
+            @JsonProperty("nivelAtividade")
+            NutritionalProfile.ActivityLevel activityLevel,
+
+            @JsonProperty("sexo")
+            NutritionalProfile.Gender gender,
+
+            @JsonProperty("idade")
+            Integer age
     ) {
 
-        public static ResumoPerfilResponse from(Perfil perfil) {
-            double imc = calcularImc(perfil.getPesoKg(), perfil.getAlturaCm());
-            int idade = Period.between(perfil.getDataNascimento(), LocalDate.now()).getYears();
+        public static ProfileSummaryResponse from(NutritionalProfile profile) {
+            double bmi = calculateBmi(profile.getWeightKg(), profile.getHeightCm());
+            int age = profile.calculateAge(LocalDate.now());
 
-            return new ResumoPerfilResponse(
-                    perfil.getPesoKg(),
-                    perfil.getAlturaCm(),
-                    Math.round(imc * 100.0) / 100.0,
-                    classificar(imc),
-                    perfil.getNivelAtividade(),
-                    perfil.getSexo(),
-                    idade
+            return new ProfileSummaryResponse(
+                    profile.getWeightKg(),
+                    profile.getHeightCm(),
+                    Math.round(bmi * 100.0) / 100.0,
+                    classify(bmi),
+                    profile.getActivityLevel(),
+                    profile.getGender(),
+                    age
             );
         }
 
-        private static double calcularImc(double pesoKg, double alturaCm) {
-            double alturaM = alturaCm / 100.0;
-            return pesoKg / (alturaM * alturaM);
+        private static double calculateBmi(double weightKg, double heightCm) {
+            double heightM = heightCm / 100.0;
+            return weightKg / (heightM * heightM);
         }
 
-        private static String classificar(double imc) {
-            if (imc < 18.5) return "Abaixo do peso";
-            if (imc < 25.0) return "Peso normal";
-            if (imc < 30.0) return "Sobrepeso";
-            if (imc < 35.0) return "Obesidade grau I";
-            if (imc < 40.0) return "Obesidade grau II";
+        private static String classify(double bmi) {
+            if (bmi < 18.5) return "Abaixo do peso";
+            if (bmi < 25.0) return "Peso normal";
+            if (bmi < 30.0) return "Sobrepeso";
+            if (bmi < 35.0) return "Obesidade grau I";
+            if (bmi < 40.0) return "Obesidade grau II";
             return "Obesidade grau III";
         }
     }
 
-    public record ResumoTriagemResponse(
-            Triagem.ObjetivoNutricional objetivo,
-            boolean possuiRestricoes,
-            boolean possuiAlergias,
-            boolean possuiCondicoesSaude
+    public record AssessmentSummaryResponse(
+            @JsonProperty("objetivo")
+            Assessment.NutritionalGoal goal,
+
+            @JsonProperty("possuiRestricoes")
+            boolean hasRestrictions,
+
+            @JsonProperty("possuiAlergias")
+            boolean hasAllergies,
+
+            @JsonProperty("possuiCondicoesSaude")
+            boolean hasHealthConditions
     ) {
 
-        public static ResumoTriagemResponse from(Triagem triagem) {
-            return new ResumoTriagemResponse(
-                    triagem.getObjetivo(),
-                    temConteudo(triagem.getRestricoesAlimentares()),
-                    temConteudo(triagem.getAlergias()),
-                    temConteudo(triagem.getCondicoesSaude())
+        public static AssessmentSummaryResponse from(Assessment assessment) {
+            return new AssessmentSummaryResponse(
+                    assessment.getGoal(),
+                    hasContent(assessment.getDietaryRestrictions()),
+                    hasContent(assessment.getAllergies()),
+                    hasContent(assessment.getHealthConditions())
             );
         }
 
-        private static boolean temConteudo(String valor) {
-            return valor != null && !valor.isBlank();
+        private static boolean hasContent(String value) {
+            return value != null && !value.isBlank();
         }
     }
 }

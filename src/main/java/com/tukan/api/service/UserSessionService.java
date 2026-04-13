@@ -45,17 +45,17 @@ public class UserSessionService {
     }
 
     @Transactional
-    public UserSession createSession(User usuario, String refreshToken, String dispositivo, String enderecoIp) {
+    public UserSession createSession(User user, String refreshToken, String device, String ipAddress) {
         Instant now = Instant.now();
 
         UserSession session = new UserSession();
-        session.setUsuario(usuario);
+        session.setUser(user);
         session.setRefreshTokenHash(hashToken(refreshToken));
-        session.setCriadoEm(now);
-        session.setExpiraEm(now.plusSeconds(refreshTokenExpiration));
-        session.setUltimoUsoEm(now);
-        session.setDispositivo(dispositivo);
-        session.setEnderecoIp(enderecoIp);
+        session.setCreatedAt(now);
+        session.setExpiresAt(now.plusSeconds(refreshTokenExpiration));
+        session.setLastUsedAt(now);
+        session.setDevice(device);
+        session.setIpAddress(ipAddress);
 
         return userSessionRepository.save(session);
     }
@@ -66,18 +66,18 @@ public class UserSessionService {
 
     @Transactional
     public void revokeSession(UserSession session) {
-        session.setRevogadoEm(Instant.now());
+        session.setRevokedAt(Instant.now());
         userSessionRepository.save(session);
     }
 
     @Transactional
-    public int revokeAllSessions(Integer usuarioId) {
-        return userSessionRepository.revokeAllByUsuarioId(usuarioId, Instant.now());
+    public int revokeAllSessions(Integer userId) {
+        return userSessionRepository.revokeAllByUserId(userId, Instant.now());
     }
 
     @Transactional
-    public void deleteAllByUsuarioId(Integer usuarioId) {
-        userSessionRepository.deleteAllByUsuarioId(usuarioId);
+    public void deleteAllByUserId(Integer userId) {
+        userSessionRepository.deleteAllByUserId(userId);
     }
 
     public long getRefreshTokenExpiration() {

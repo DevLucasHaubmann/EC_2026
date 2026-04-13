@@ -14,9 +14,9 @@ import java.time.Instant;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Triagem {
+public class Assessment {
 
-    public enum ObjetivoNutricional {
+    public enum NutritionalGoal {
         PERDA_DE_PESO,
         GANHO_DE_MASSA,
         MANUTENCAO,
@@ -30,34 +30,34 @@ public class Triagem {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false, unique = true)
-    private User usuario;
+    private User user;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "objetivo", nullable = false)
-    private ObjetivoNutricional objetivo;
+    private NutritionalGoal goal;
 
     @Column(name = "restricoes_alimentares", length = 500)
-    private String restricoesAlimentares;
+    private String dietaryRestrictions;
 
     @Column(name = "alergias", length = 500)
-    private String alergias;
+    private String allergies;
 
     @Column(name = "condicoes_saude", length = 500)
-    private String condicoesSaude;
+    private String healthConditions;
 
     @Column(name = "criado_em", nullable = false, updatable = false)
-    private Instant criadoEm;
+    private Instant createdAt;
 
     @Column(name = "atualizado_em")
-    private Instant atualizadoEm;
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        this.criadoEm = Instant.now();
+        this.createdAt = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        this.atualizadoEm = Instant.now();
+        this.updatedAt = Instant.now();
     }
 }

@@ -8,6 +8,7 @@ import com.tukan.api.dto.RegisterRequest;
 import com.tukan.api.entity.User;
 import com.tukan.api.entity.UserSession;
 import com.tukan.api.exception.BusinessException;
+import com.tukan.api.util.EmailUtils;
 import com.tukan.api.repository.UserRepository;
 import com.tukan.api.security.JwtService;
 import com.tukan.api.security.UserPrincipal;
@@ -22,7 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Locale;
+
 
 @Service
 @RequiredArgsConstructor
@@ -36,48 +37,48 @@ public class AuthService {
     private final OnboardingService onboardingService;
 
     @Transactional
-    public AuthResponse register(RegisterRequest request, String dispositivo, String enderecoIp) {
-        String normalizedEmail = normalizeEmail(request.email());
+    public AuthResponse register(RegisterRequest request, String device, String ipAddress) {
+        String normalizedEmail = EmailUtils.normalize(request.email());
 
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new BusinessException("E-mail já cadastrado.");
         }
 
         User user = new User();
-        user.setNome(request.nome().trim());
+        user.setName(request.name().trim());
         user.setEmail(normalizedEmail);
-        user.setSenha(passwordEncoder.encode(request.senha()));
-        user.setTipo(User.UserType.USER);
-        user.setStatus(User.UserState.ATIVO);
+        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setType(User.UserType.USER);
+        user.setStatus(User.UserState.ACTIVE);
 
         userRepository.save(user);
 
         Authentication authentication = toAuthentication(user);
-        return buildAuthResponse(authentication, user, dispositivo, enderecoIp, "Usuário cadastrado com sucesso.");
+        return buildAuthResponse(authentication, user, device, ipAddress, "Usuário cadastrado com sucesso.");
     }
 
     @Transactional
-    public AuthResponse login(LoginRequest request, String dispositivo, String enderecoIp) {
+    public AuthResponse login(LoginRequest request, String device, String ipAddress) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        normalizeEmail(request.email()),
-                        request.senha()
+                        EmailUtils.normalize(request.email()),
+                        request.password()
                 )
         );
 
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
         User user = principal.user();
 
-        return buildAuthResponse(authentication, user, dispositivo, enderecoIp, "Login realizado com sucesso.");
+        return buildAuthResponse(authentication, user, device, ipAddress, "Login realizado com sucesso.");
     }
 
     @Transactional(noRollbackFor = BusinessException.class)
-    public AuthResponse refresh(RefreshRequest request, String dispositivo, String enderecoIp) {
+    public AuthResponse refresh(RefreshRequest request, String device, String ipAddress) {
         UserSession session = userSessionService.findByRefreshToken(request.refreshToken())
                 .orElseThrow(() -> new BusinessException("Refresh token inválido.", HttpStatus.UNAUTHORIZED));
 
         if (session.isRevoked()) {
-            userSessionService.revokeAllSessions(session.getUsuario().getId());
+            userSessionService.revokeAllSessions(session.getUser().getId());
             throw new BusinessException("Refresh token já utilizado. Todas as sessões foram revogadas por segurança.", HttpStatus.UNAUTHORIZED);
         }
 
@@ -85,9 +86,9 @@ public class AuthService {
             throw new BusinessException("Refresh token expirado.", HttpStatus.UNAUTHORIZED);
         }
 
-        User user = session.getUsuario();
+        User user = session.getUser();
 
-        if (user.getStatus() != User.UserState.ATIVO) {
+        if (user.getStatus() != User.UserState.ACTIVE) {
             userSessionService.revokeAllSessions(user.getId());
             throw new BusinessException("Usuário não está ativo.", HttpStatus.FORBIDDEN);
         }
@@ -95,7 +96,7 @@ public class AuthService {
         userSessionService.revokeSession(session);
 
         Authentication authentication = toAuthentication(user);
-        return buildAuthResponse(authentication, user, dispositivo, enderecoIp, "Token renovado com sucesso.");
+        return buildAuthResponse(authentication, user, device, ipAddress, "Token renovado com sucesso.");
     }
 
     @Transactional
@@ -109,11 +110,11 @@ public class AuthService {
     }
 
     private AuthResponse buildAuthResponse(Authentication authentication, User user,
-                                           String dispositivo, String enderecoIp, String message) {
+                                           String device, String ipAddress, String message) {
         String accessToken = jwtService.generateAccessToken(authentication);
         String refreshToken = userSessionService.generateRefreshToken();
 
-        userSessionService.createSession(user, refreshToken, dispositivo, enderecoIp);
+        userSessionService.createSession(user, refreshToken, device, ipAddress);
 
         OnboardingStatus onboarding = onboardingService.checkOnboarding(user.getId());
 
@@ -132,11 +133,8 @@ public class AuthService {
         return new UsernamePasswordAuthenticationToken(
                 user.getEmail(),
                 null,
-                List.of(new SimpleGrantedAuthority(user.getTipo().name()))
+                List.of(new SimpleGrantedAuthority(user.getType().name()))
         );
     }
 
-    private String normalizeEmail(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
-    }
 }

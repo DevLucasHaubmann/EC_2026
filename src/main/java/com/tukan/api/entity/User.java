@@ -20,9 +20,9 @@ public class User {
     }
 
     public enum UserState {
-        ATIVO,
-        BLOQUEADO,
-        BANIDO
+        ACTIVE,
+        BLOCKED,
+        BANNED
     }
 
     @Id
@@ -30,19 +30,19 @@ public class User {
     private Integer id;
 
     @Column(name = "nome", nullable = false, length = 100)
-    private String nome;
+    private String name;
 
     @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
 
     @Column(name = "senha", nullable = false, length = 255)
-    private String senha;
+    private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo", nullable = false)
-    private UserType tipo = UserType.USER;
+    private UserType type = UserType.USER;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private UserState status = UserState.ATIVO;
+    private UserState status = UserState.ACTIVE;
 }

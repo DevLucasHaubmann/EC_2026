@@ -1,27 +1,38 @@
 package com.tukan.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.tukan.api.entity.User;
-import com.tukan.api.service.MeService.DadosUsuarioAutenticado;
+import com.tukan.api.service.MeService.AuthenticatedUserData;
 
 public record MeResponse(
         Integer id,
-        String nome,
+
+        @JsonProperty("nome")
+        String name,
+
         String email,
-        User.UserType tipo,
+
+        @JsonProperty("tipo")
+        User.UserType type,
+
         User.UserState status,
-        PerfilResponse perfil,
-        TriagemResponse triagem
+
+        @JsonProperty("perfil")
+        PerfilResponse profile,
+
+        @JsonProperty("triagem")
+        TriagemResponse assessment
 ) {
 
-    public static MeResponse from(DadosUsuarioAutenticado dados) {
+    public static MeResponse from(AuthenticatedUserData data) {
         return new MeResponse(
-                dados.user().getId(),
-                dados.user().getNome(),
-                dados.user().getEmail(),
-                dados.user().getTipo(),
-                dados.user().getStatus(),
-                dados.perfil() != null ? PerfilResponse.from(dados.perfil()) : null,
-                dados.triagem() != null ? TriagemResponse.from(dados.triagem()) : null
+                data.user().getId(),
+                data.user().getName(),
+                data.user().getEmail(),
+                data.user().getType(),
+                data.user().getStatus(),
+                data.profile() != null ? PerfilResponse.from(data.profile()) : null,
+                data.assessment() != null ? TriagemResponse.from(data.assessment()) : null
         );
     }
 }

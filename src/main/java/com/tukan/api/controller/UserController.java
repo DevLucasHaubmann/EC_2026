@@ -5,13 +5,13 @@ import com.tukan.api.dto.UserResponse;
 import com.tukan.api.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/users")
@@ -22,10 +22,9 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    public ResponseEntity<List<UserResponse>> findAll() {
-        List<UserResponse> users = userService.findAll().stream()
-                .map(UserResponse::from)
-                .toList();
+    public ResponseEntity<Page<UserResponse>> findAll(Pageable pageable) {
+        Page<UserResponse> users = userService.findAll(pageable)
+                .map(UserResponse::from);
         return ResponseEntity.ok(users);
     }
 

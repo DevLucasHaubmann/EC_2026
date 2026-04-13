@@ -12,12 +12,12 @@ public record UserPrincipal(User user) implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(user.getTipo().name()));
+        return List.of(new SimpleGrantedAuthority(user.getType().name()));
     }
 
     @Override
     public String getPassword() {
-        return user.getSenha();
+        return user.getPassword();
     }
 
     @Override
@@ -27,11 +27,11 @@ public record UserPrincipal(User user) implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return user.getStatus() != User.UserState.BLOQUEADO;
+        return user.getStatus() != User.UserState.BLOCKED;
     }
 
     @Override
     public boolean isEnabled() {
-        return user.getStatus() != User.UserState.BANIDO;
+        return user.getStatus() != User.UserState.BANNED;
     }
 }

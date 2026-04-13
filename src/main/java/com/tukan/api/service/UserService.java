@@ -3,16 +3,18 @@ package com.tukan.api.service;
 import com.tukan.api.dto.UpdateUserRequest;
 import com.tukan.api.entity.User;
 import com.tukan.api.exception.BusinessException;
-import com.tukan.api.repository.PerfilRepository;
-import com.tukan.api.repository.TriagemRepository;
+import com.tukan.api.util.EmailUtils;
+import com.tukan.api.repository.NutritionalProfileRepository;
+import com.tukan.api.repository.AssessmentRepository;
 import com.tukan.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Locale;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 
 @Service
 @RequiredArgsConstructor
@@ -20,11 +22,11 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserSessionService userSessionService;
-    private final PerfilRepository perfilRepository;
-    private final TriagemRepository triagemRepository;
+    private final NutritionalProfileRepository nutritionalProfileRepository;
+    private final AssessmentRepository assessmentRepository;
 
-    public List<User> findAll() {
-        return userRepository.findAll();
+    public Page<User> findAll(Pageable pageable) {
+        return userRepository.findAll(pageable);
     }
 
     public User findById(Integer id) {
@@ -33,7 +35,7 @@ public class UserService {
     }
 
     public User findByEmail(String email) {
-        return userRepository.findByEmail(normalizeEmail(email))
+        return userRepository.findByEmail(EmailUtils.normalize(email))
                 .orElseThrow(() -> new BusinessException("Usuário não encontrado.", HttpStatus.NOT_FOUND));
     }
 
@@ -42,25 +44,25 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Usuário não encontrado.", HttpStatus.NOT_FOUND));
 
-        if (request.nome() != null && !request.nome().isBlank()) {
-            user.setNome(request.nome().trim());
+        if (request.name() != null && !request.name().isBlank()) {
+            user.setName(request.name().trim());
         }
 
         if (request.email() != null && !request.email().isBlank()) {
-            String normalizedEmail = normalizeEmail(request.email());
+            String normalizedEmail = EmailUtils.normalize(request.email());
             if (!normalizedEmail.equals(user.getEmail()) && userRepository.existsByEmail(normalizedEmail)) {
                 throw new BusinessException("E-mail já cadastrado.");
             }
             user.setEmail(normalizedEmail);
         }
 
-        if (request.tipo() != null) {
-            user.setTipo(request.tipo());
+        if (request.type() != null) {
+            user.setType(request.type());
         }
 
         if (request.status() != null) {
             user.setStatus(request.status());
-            if (request.status() != User.UserState.ATIVO) {
+            if (request.status() != User.UserState.ACTIVE) {
                 userSessionService.revokeAllSessions(id);
             }
         }
@@ -71,10 +73,10 @@ public class UserService {
     @Transactional
     public void delete(Integer targetUserId, String authenticatedEmail) {
         User authenticatedUser = userRepository.findByEmail(authenticatedEmail)
-                .orElseThrow(() -> new BusinessException("Usuário autenticado não encontrado."));
+                .orElseThrow(() -> new BusinessException("Usuário autenticado não encontrado.", HttpStatus.NOT_FOUND));
 
         User targetUser = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new BusinessException("Usuário não encontrado."));
+                .orElseThrow(() -> new BusinessException("Usuário não encontrado.", HttpStatus.NOT_FOUND));
 
         boolean isSelfDeletion = authenticatedUser.getId().equals(targetUser.getId());
 
@@ -82,9 +84,9 @@ public class UserService {
             throw new BusinessException("Um administrador não pode excluir a própria conta.", HttpStatus.FORBIDDEN);
         }
 
-        triagemRepository.deleteByUsuarioId(targetUserId);
-        perfilRepository.deleteByUsuarioId(targetUserId);
-        userSessionService.deleteAllByUsuarioId(targetUserId);
+        assessmentRepository.deleteByUserId(targetUserId);
+        nutritionalProfileRepository.deleteByUserId(targetUserId);
+        userSessionService.deleteAllByUserId(targetUserId);
         userRepository.delete(targetUser);
     }
 
@@ -96,7 +98,4 @@ public class UserService {
         userSessionService.revokeAllSessions(id);
     }
 
-    private String normalizeEmail(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
-    }
 }

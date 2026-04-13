@@ -1,10 +1,10 @@
 package com.tukan.api.service;
 
-import com.tukan.api.entity.Perfil;
-import com.tukan.api.entity.Triagem;
+import com.tukan.api.entity.NutritionalProfile;
+import com.tukan.api.entity.Assessment;
 import com.tukan.api.entity.User;
-import com.tukan.api.repository.PerfilRepository;
-import com.tukan.api.repository.TriagemRepository;
+import com.tukan.api.repository.NutritionalProfileRepository;
+import com.tukan.api.repository.AssessmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,17 +14,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class MeService {
 
     private final UserService userService;
-    private final PerfilRepository perfilRepository;
-    private final TriagemRepository triagemRepository;
+    private final NutritionalProfileRepository nutritionalProfileRepository;
+    private final AssessmentRepository assessmentRepository;
 
     @Transactional(readOnly = true)
-    public DadosUsuarioAutenticado findAuthenticatedUserData(String email) {
+    public AuthenticatedUserData findAuthenticatedUserData(String email) {
         User user = userService.findByEmail(email);
-        Perfil perfil = perfilRepository.findByUsuarioId(user.getId()).orElse(null);
-        Triagem triagem = triagemRepository.findByUsuarioId(user.getId()).orElse(null);
-        return new DadosUsuarioAutenticado(user, perfil, triagem);
+        NutritionalProfile profile = nutritionalProfileRepository.findByUserId(user.getId()).orElse(null);
+        Assessment assessment = assessmentRepository.findByUserId(user.getId()).orElse(null);
+        return new AuthenticatedUserData(user, profile, assessment);
     }
 
-    public record DadosUsuarioAutenticado(User user, Perfil perfil, Triagem triagem) {
+    public record AuthenticatedUserData(User user, NutritionalProfile profile, Assessment assessment) {
     }
 }
