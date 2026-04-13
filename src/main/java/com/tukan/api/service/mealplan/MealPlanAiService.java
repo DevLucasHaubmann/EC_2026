@@ -7,9 +7,14 @@ import com.tukan.api.service.ai.AiProviderClient;
 import com.tukan.api.service.ai.AiProviderResult;
 import com.tukan.api.service.ai.MealPlanPromptBuilder;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
+import java.util.Map;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MealPlanAiService {
@@ -24,21 +29,38 @@ public class MealPlanAiService {
         DailyMealPlan plan = mealPlanEngine.generatePlan(authenticatedEmail);
         MealPlanContext context = mealPlanEngine.buildContext(authenticatedEmail);
 
-        String systemPrompt = promptBuilder.buildSystemPrompt();
-        String userPrompt = promptBuilder.buildUserPrompt(plan, context);
+        try {
+            String systemPrompt = promptBuilder.buildSystemPrompt();
+            String userPrompt = promptBuilder.buildUserPrompt(plan, context);
 
-        AiProviderResult providerResult = aiProviderClient.send(systemPrompt, userPrompt);
+            AiProviderResult providerResult = aiProviderClient.send(systemPrompt, userPrompt);
 
-        MealPlanAiResponse aiResponse = parseResponse(providerResult.content());
+            MealPlanAiResponse aiResponse = parseResponse(providerResult.content());
 
+            return new MealPlanRecomendacaoResponse(
+                    aiResponse.summary(),
+                    plan,
+                    aiResponse.mealExplanations(),
+                    aiResponse.tips(),
+                    aiResponse.alerts(),
+                    providerResult.provider(),
+                    providerResult.model()
+            );
+        } catch (Exception e) {
+            log.error("Falha ao enriquecer plano alimentar com IA. Retornando plano sem complemento da IA.", e);
+            return buildFallbackResponse(plan);
+        }
+    }
+
+    private MealPlanRecomendacaoResponse buildFallbackResponse(DailyMealPlan plan) {
         return new MealPlanRecomendacaoResponse(
-                aiResponse.summary(),
+                "Plano alimentar gerado com sucesso. O complemento da IA está temporariamente indisponível.",
                 plan,
-                aiResponse.mealExplanations(),
-                aiResponse.tips(),
-                aiResponse.alerts(),
-                providerResult.provider(),
-                providerResult.model()
+                Map.of(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                "fallback",
+                "none"
         );
     }
 

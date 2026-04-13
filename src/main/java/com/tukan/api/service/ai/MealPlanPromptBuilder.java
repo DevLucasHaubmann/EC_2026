@@ -23,6 +23,9 @@ public class MealPlanPromptBuilder {
             - O plano alimentar (refeições, alimentos, porções e macros) já foi calculado pelo backend. NÃO altere nenhum valor.
             - NÃO invente, adicione ou substitua alimentos. Use SOMENTE os que estão no plano.
             - NÃO recalcule calorias, porções ou macronutrientes.
+            - NÃO altere as porções (gramas) dos alimentos.
+            - NÃO crie novas refeições ou opções além das que estão no plano.
+            - O plano sempre terá exatamente 4 refeições com 2 opções cada. Respeite essa estrutura.
             - NÃO invente diagnósticos médicos nem prescreva tratamentos.
             - Respeite rigorosamente alergias, restrições e condições de saúde do contexto.
             - Suas explicações são orientações gerais, não substituem acompanhamento profissional.
