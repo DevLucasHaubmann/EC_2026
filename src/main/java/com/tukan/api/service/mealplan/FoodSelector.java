@@ -51,7 +51,26 @@ public class FoodSelector {
         Set<Integer> usedInOption1 = new HashSet<>();
         List<Food> option1Items = selectItems(byCategory, calorieTarget, usedInOption1);
 
-        List<Food> option2Items = selectItems(byCategory, calorieTarget, usedInOption1);
+        // Tentativa normal: sem repetir alimentos da opção 1
+        Set<Integer> excludedForOption2 = new HashSet<>(usedInOption1);
+        List<Food> option2Items = selectItems(byCategory, calorieTarget, excludedForOption2);
+
+        // Fallback: se opção 2 ficou vazia, relaxar restrição de repetição
+        if (option2Items.isEmpty() && !option1Items.isEmpty()) {
+            // Reshuffle para variar a ordem de seleção
+            List<Food> reshuffled = new ArrayList<>(availableFoods);
+            Collections.shuffle(reshuffled, random);
+            reshuffled.sort(Comparator.comparing(
+                    (Food f) -> f.getPrimaryMealType() != null ? 0 : 1));
+
+            Map<String, List<Food>> reshuffledByCategory = reshuffled.stream()
+                    .collect(Collectors.groupingBy(
+                            f -> f.getCategory() != null ? f.getCategory() : "OUTROS",
+                            LinkedHashMap::new,
+                            Collectors.toList()));
+
+            option2Items = selectItems(reshuffledByCategory, calorieTarget, new HashSet<>());
+        }
 
         return List.of(
                 buildOption(1, option1Items),
