@@ -2,19 +2,17 @@ package com.tukan.api.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tukan.api.dto.ai.AiRecommendationContext;
-import com.tukan.api.dto.ai.AiRecommendationResponse;
 import com.tukan.api.dto.FeedbackRequest;
-import com.tukan.api.entity.RecommendationFeedback;
+import com.tukan.api.dto.mealplan.MealPlanRecomendacaoResponse;
 import com.tukan.api.entity.Recommendation;
+import com.tukan.api.entity.RecommendationFeedback;
 import com.tukan.api.entity.User;
 import com.tukan.api.exception.AiProviderException;
 import com.tukan.api.exception.BusinessException;
 import com.tukan.api.repository.RecommendationFeedbackRepository;
 import com.tukan.api.repository.RecommendationRepository;
-import com.tukan.api.service.ai.AiPromptBuilder;
-import com.tukan.api.service.ai.AiProviderClient;
-import com.tukan.api.service.ai.AiProviderResult;
+import com.tukan.api.service.mealplan.MealPlanAiService;
+import com.tukan.api.service.mealplan.MealPlanEngine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -27,9 +25,8 @@ import java.util.List;
 public class AiRecommendationService {
 
     private final UserService userService;
-    private final AiContextService aiContextService;
-    private final AiPromptBuilder aiPromptBuilder;
-    private final AiProviderClient aiProviderClient;
+    private final MealPlanAiService mealPlanAiService;
+    private final MealPlanEngine mealPlanEngine;
     private final RecommendationRepository recommendationRepository;
     private final RecommendationFeedbackRepository recommendationFeedbackRepository;
     private final ObjectMapper objectMapper;
@@ -45,16 +42,10 @@ public class AiRecommendationService {
 
         archiveActiveRecommendations(user.getId());
 
-        AiRecommendationContext context = aiContextService.build(user.getId());
+        MealPlanRecomendacaoResponse response = mealPlanAiService.generate(authenticatedEmail);
+        String contextJson = toJson(mealPlanEngine.buildContext(authenticatedEmail));
 
-        String systemPrompt = aiPromptBuilder.buildSystemPrompt();
-        String userPrompt = aiPromptBuilder.buildUserPrompt(context);
-
-        AiProviderResult providerResult = aiProviderClient.send(systemPrompt, userPrompt);
-
-        AiRecommendationResponse parsed = parseResponse(providerResult.content());
-
-        Recommendation recommendation = toEntity(user, parsed, context, providerResult);
+        Recommendation recommendation = toEntity(user, response, contextJson);
         return recommendationRepository.save(recommendation);
     }
 
@@ -139,16 +130,17 @@ public class AiRecommendationService {
                         "Recomendação não encontrada.", HttpStatus.NOT_FOUND));
     }
 
-    private Recommendation toEntity(User user, AiRecommendationResponse response,
-                                     AiRecommendationContext context, AiProviderResult providerResult) {
+    private Recommendation toEntity(User user, MealPlanRecomendacaoResponse response, String contextJson) {
         Recommendation recommendation = new Recommendation();
         recommendation.setUser(user);
         recommendation.setSummary(response.summary());
-        recommendation.setRecommendations(toJson(response.recommendations()));
-        recommendation.setAlerts(toJson(response.alerts()));
-        recommendation.setContextJson(toJson(context));
-        recommendation.setProvider(providerResult.provider());
-        recommendation.setModel(providerResult.model());
+        recommendation.setPlanJson(toJson(response.plan()));
+        recommendation.setMealExplanationsJson(toJson(response.mealExplanations()));
+        recommendation.setTipsJson(toJson(response.tips()));
+        recommendation.setAlertsJson(toJson(response.alerts()));
+        recommendation.setContextJson(contextJson);
+        recommendation.setProvider(response.provider());
+        recommendation.setModel(response.model());
         recommendation.setStatus(Recommendation.RecommendationStatus.GENERATED);
         return recommendation;
     }
@@ -158,30 +150,6 @@ public class AiRecommendationService {
             return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException e) {
             throw new AiProviderException("Erro ao serializar dados da recomendação.", e);
-        }
-    }
-
-    private AiRecommendationResponse parseResponse(String rawResponse) {
-        try {
-            AiRecommendationResponse response = objectMapper.readValue(rawResponse, AiRecommendationResponse.class);
-            validateResponse(response);
-            return response;
-        } catch (AiProviderException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new AiProviderException("A resposta da IA não pôde ser interpretada. Tente novamente.", e);
-        }
-    }
-
-    private void validateResponse(AiRecommendationResponse response) {
-        if (response.summary() == null || response.summary().isBlank()) {
-            throw new AiProviderException("A resposta da IA está incompleta: campo 'resumo' ausente.");
-        }
-        if (response.recommendations() == null || response.recommendations().isEmpty()) {
-            throw new AiProviderException("A resposta da IA está incompleta: campo 'recomendacoes' ausente.");
-        }
-        if (response.alerts() == null) {
-            throw new AiProviderException("A resposta da IA está incompleta: campo 'alertas' ausente.");
         }
     }
 }

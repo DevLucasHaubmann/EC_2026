@@ -33,11 +33,17 @@ public class Recommendation {
     @Column(name = "resumo", nullable = false, columnDefinition = "TEXT")
     private String summary;
 
-    @Column(name = "recomendacoes", nullable = false, columnDefinition = "TEXT")
-    private String recommendations;
+    @Column(name = "plano_json", nullable = false, columnDefinition = "MEDIUMTEXT")
+    private String planJson;
 
-    @Column(name = "alertas", nullable = false, columnDefinition = "TEXT")
-    private String alerts;
+    @Column(name = "explicacao_refeicoes_json", columnDefinition = "TEXT")
+    private String mealExplanationsJson;
+
+    @Column(name = "dicas_json", columnDefinition = "TEXT")
+    private String tipsJson;
+
+    @Column(name = "alertas_json", columnDefinition = "TEXT")
+    private String alertsJson;
 
     @Column(name = "contexto_json", nullable = false, columnDefinition = "TEXT")
     private String contextJson;
