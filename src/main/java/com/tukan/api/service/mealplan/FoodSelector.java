@@ -32,7 +32,8 @@ public class FoodSelector {
      */
     public List<MealOptionBuild> buildTwoOptions(List<Food> availableFoods, double calorieTarget) {
         if (availableFoods.isEmpty()) {
-            return List.of(emptyOption(1), emptyOption(2));
+            throw new IllegalArgumentException(
+                    "Lista de alimentos não pode estar vazia para montar opções de refeição.");
         }
 
         List<Food> shuffled = new ArrayList<>(availableFoods);

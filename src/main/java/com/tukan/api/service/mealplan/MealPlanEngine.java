@@ -61,6 +61,7 @@ public class MealPlanEngine {
         validateEligibleFoods(eligible);
 
         Map<String, List<Food>> grouped = foodFilterService.groupByMealType(eligible);
+        validateMealCoverage(grouped, distribution);
 
         List<MealPlanMeal> meals = new ArrayList<>();
         for (var entry : distribution.entrySet()) {
@@ -87,6 +88,7 @@ public class MealPlanEngine {
         validateEligibleFoods(eligible);
 
         Map<String, List<Food>> grouped = foodFilterService.groupByMealType(eligible);
+        validateMealCoverage(grouped, distribution);
         Map<String, List<EligibleFoodSummary>> foodsByMeal = buildFoodSummaries(grouped);
 
         AiPerfilContext profileCtx = new AiPerfilContext(
@@ -127,7 +129,20 @@ public class MealPlanEngine {
     private void validateEligibleFoods(List<Food> eligible) {
         if (eligible.isEmpty()) {
             throw new BusinessException(
-                    "Nenhum alimento compatível encontrado com as restrições informadas.",
+                    "Não foi possível gerar um plano alimentar com as restrições atuais do usuário.",
+                    HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+    }
+
+    private void validateMealCoverage(Map<String, List<Food>> grouped, Map<String, Double> distribution) {
+        List<String> emptyMeals = distribution.keySet().stream()
+                .filter(meal -> grouped.getOrDefault(meal, List.of()).isEmpty())
+                .toList();
+
+        if (!emptyMeals.isEmpty()) {
+            throw new BusinessException(
+                    "Não foi possível gerar um plano alimentar com as restrições atuais do usuário. "
+                            + "Sem alimentos disponíveis para: " + String.join(", ", emptyMeals) + ".",
                     HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
