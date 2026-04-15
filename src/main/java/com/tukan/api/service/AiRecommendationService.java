@@ -102,6 +102,11 @@ public class AiRecommendationService {
                     "Esta recomendação já possui feedback registrado.", HttpStatus.CONFLICT);
         }
 
+        if (recommendation.getStatus() == Recommendation.RecommendationStatus.GENERATED) {
+            recommendation.setStatus(Recommendation.RecommendationStatus.VIEWED);
+            recommendationRepository.save(recommendation);
+        }
+
         RecommendationFeedback feedback = new RecommendationFeedback();
         feedback.setRecommendation(recommendation);
         feedback.setRating(request.rating());
