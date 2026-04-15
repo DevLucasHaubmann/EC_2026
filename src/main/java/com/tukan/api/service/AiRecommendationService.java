@@ -83,10 +83,14 @@ public class AiRecommendationService {
     public Recommendation markAsViewed(Integer id, String authenticatedEmail) {
         Recommendation recommendation = findByIdAndOwner(id, authenticatedEmail);
 
-        if (recommendation.getStatus() != Recommendation.RecommendationStatus.GENERATED) {
+        if (recommendation.getStatus() == Recommendation.RecommendationStatus.ARCHIVED) {
             throw new BusinessException(
-                    "Apenas recomendações com status GERADA podem ser marcadas como visualizadas.",
+                    "Recomendações arquivadas não podem ser marcadas como visualizadas.",
                     HttpStatus.CONFLICT);
+        }
+
+        if (recommendation.getStatus() == Recommendation.RecommendationStatus.VIEWED) {
+            return recommendation;
         }
 
         recommendation.setStatus(Recommendation.RecommendationStatus.VIEWED);
