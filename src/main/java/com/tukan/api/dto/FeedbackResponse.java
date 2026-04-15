@@ -8,19 +8,19 @@ import java.time.Instant;
 public record FeedbackResponse(
         Integer id,
 
-        @JsonProperty("recomendacaoId")
+        @JsonProperty("recommendationId")
         Integer recommendationId,
 
-        @JsonProperty("avaliacao")
+        @JsonProperty("rating")
         RecommendationFeedback.Rating rating,
 
-        @JsonProperty("motivo")
+        @JsonProperty("reason")
         String reason,
 
-        @JsonProperty("observacao")
+        @JsonProperty("observation")
         String observation,
 
-        @JsonProperty("criadoEm")
+        @JsonProperty("createdAt")
         Instant createdAt
 ) {
 

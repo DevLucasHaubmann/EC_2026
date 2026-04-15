@@ -6,12 +6,12 @@ import com.tukan.api.entity.User;
 public record UserResponse(
         Integer id,
 
-        @JsonProperty("nome")
+        @JsonProperty("name")
         String name,
 
         String email,
 
-        @JsonProperty("tipo")
+        @JsonProperty("type")
         User.UserType type,
 
         User.UserState status

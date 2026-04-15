@@ -3,7 +3,7 @@ package com.tukan.api.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tukan.api.dto.FeedbackRequest;
-import com.tukan.api.dto.mealplan.MealPlanRecomendacaoResponse;
+import com.tukan.api.dto.mealplan.MealPlanRecommendationResponse;
 import com.tukan.api.entity.Recommendation;
 import com.tukan.api.entity.RecommendationFeedback;
 import com.tukan.api.entity.User;
@@ -42,7 +42,7 @@ public class AiRecommendationService {
 
         archiveActiveRecommendations(user.getId());
 
-        MealPlanRecomendacaoResponse response = mealPlanAiService.generate(authenticatedEmail);
+        MealPlanRecommendationResponse response = mealPlanAiService.generate(authenticatedEmail);
         String contextJson = toJson(mealPlanEngine.buildContext(authenticatedEmail));
 
         Recommendation recommendation = toEntity(user, response, contextJson);
@@ -130,7 +130,7 @@ public class AiRecommendationService {
                         "Recomendação não encontrada.", HttpStatus.NOT_FOUND));
     }
 
-    private Recommendation toEntity(User user, MealPlanRecomendacaoResponse response, String contextJson) {
+    private Recommendation toEntity(User user, MealPlanRecommendationResponse response, String contextJson) {
         Recommendation recommendation = new Recommendation();
         recommendation.setUser(user);
         recommendation.setSummary(response.summary());

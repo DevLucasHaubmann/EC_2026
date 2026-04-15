@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public record MealPlanMeal(
-        @JsonProperty("refeicao") String mealType,
-        @JsonProperty("metaCalorica") double calorieTarget,
-        @JsonProperty("opcoes") List<MealOption> options
+        @JsonProperty("mealType") String mealType,
+        @JsonProperty("calorieTarget") double calorieTarget,
+        @JsonProperty("options") List<MealOption> options
 ) {}

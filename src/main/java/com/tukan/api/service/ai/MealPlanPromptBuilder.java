@@ -41,15 +41,15 @@ public class MealPlanPromptBuilder {
             - Responda obrigatoriamente em JSON válido.
             - Use exatamente esta estrutura, sem campos extras:
             {
-              "resumo": "string com resumo do plano, perfil e objetivo do usuário",
-              "explicacaoRefeicoes": {
-                "CAFE_MANHA": "string explicando as escolhas do café da manhã",
-                "ALMOCO": "string explicando as escolhas do almoço",
-                "LANCHE_TARDE": "string explicando as escolhas do lanche da tarde",
-                "JANTA": "string explicando as escolhas do jantar"
+              "summary": "string com resumo do plano, perfil e objetivo do usuário",
+              "mealExplanations": {
+                "BREAKFAST": "string explicando as escolhas do café da manhã",
+                "LUNCH": "string explicando as escolhas do almoço",
+                "AFTERNOON_SNACK": "string explicando as escolhas do lanche da tarde",
+                "DINNER": "string explicando as escolhas do jantar"
               },
-              "dicas": ["lista de strings com dicas práticas de preparo ou consumo"],
-              "alertas": ["lista de strings com alertas relevantes"]
+              "tips": ["lista de strings com dicas práticas de preparo ou consumo"],
+              "alerts": ["lista de strings com alertas relevantes"]
             }
             - Não inclua texto fora do JSON.
             - Não use markdown, blocos de código ou explicações adicionais.

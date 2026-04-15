@@ -5,14 +5,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 
 public record MealPlanFoodItem(
-        @JsonProperty("alimentoId") Integer foodId,
-        @JsonProperty("nome") String name,
-        @JsonProperty("nomeExibicao") String displayName,
-        @JsonProperty("categoria") String category,
-        @JsonProperty("porcaoG") BigDecimal portionGrams,
-        @JsonProperty("calorias") BigDecimal calories,
-        @JsonProperty("proteina") BigDecimal protein,
-        @JsonProperty("carboidrato") BigDecimal carbs,
-        @JsonProperty("gordura") BigDecimal fat,
-        @JsonProperty("fibra") BigDecimal fiber
+        @JsonProperty("foodId") Integer foodId,
+        @JsonProperty("name") String name,
+        @JsonProperty("displayName") String displayName,
+        @JsonProperty("category") String category,
+        @JsonProperty("portionGrams") BigDecimal portionGrams,
+        @JsonProperty("calories") BigDecimal calories,
+        @JsonProperty("protein") BigDecimal protein,
+        @JsonProperty("carbs") BigDecimal carbs,
+        @JsonProperty("fat") BigDecimal fat,
+        @JsonProperty("fiber") BigDecimal fiber
 ) {}

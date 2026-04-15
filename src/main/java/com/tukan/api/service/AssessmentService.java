@@ -1,8 +1,8 @@
 package com.tukan.api.service;
 
-import com.tukan.api.dto.AdminUpdateTriagemRequest;
-import com.tukan.api.dto.CreateTriagemRequest;
-import com.tukan.api.dto.UpdateTriagemRequest;
+import com.tukan.api.dto.AdminUpdateAssessmentRequest;
+import com.tukan.api.dto.CreateAssessmentRequest;
+import com.tukan.api.dto.UpdateAssessmentRequest;
 import com.tukan.api.entity.Assessment;
 import com.tukan.api.entity.User;
 import com.tukan.api.exception.BusinessException;
@@ -24,7 +24,7 @@ public class AssessmentService {
     // ── Self-service ──────────────────────────────────────────────
 
     @Transactional
-    public Assessment createOwn(String authenticatedEmail, CreateTriagemRequest request) {
+    public Assessment createOwn(String authenticatedEmail, CreateAssessmentRequest request) {
         User user = userService.findByEmail(authenticatedEmail);
 
         if (assessmentRepository.existsByUserId(user.getId())) {
@@ -41,7 +41,7 @@ public class AssessmentService {
     }
 
     @Transactional
-    public Assessment updateOwn(String authenticatedEmail, UpdateTriagemRequest request) {
+    public Assessment updateOwn(String authenticatedEmail, UpdateAssessmentRequest request) {
         if (request.goal() == null && request.dietaryRestrictions() == null
                 && request.allergies() == null && request.healthConditions() == null) {
             throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
@@ -80,7 +80,7 @@ public class AssessmentService {
     }
 
     @Transactional
-    public Assessment createForUser(Integer userId, CreateTriagemRequest request) {
+    public Assessment createForUser(Integer userId, CreateAssessmentRequest request) {
         User user = userService.findById(userId);
 
         if (assessmentRepository.existsByUserId(userId)) {
@@ -91,7 +91,7 @@ public class AssessmentService {
     }
 
     @Transactional
-    public Assessment update(Integer id, AdminUpdateTriagemRequest request) {
+    public Assessment update(Integer id, AdminUpdateAssessmentRequest request) {
         if (request.goal() == null && request.dietaryRestrictions() == null
                 && request.allergies() == null && request.healthConditions() == null) {
             throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
@@ -124,7 +124,7 @@ public class AssessmentService {
 
     // ── Internal methods ──────────────────────────────────────────
 
-    private Assessment createAssessment(User user, CreateTriagemRequest request) {
+    private Assessment createAssessment(User user, CreateAssessmentRequest request) {
         Assessment assessment = new Assessment();
         assessment.setUser(user);
         assessment.setGoal(request.goal());

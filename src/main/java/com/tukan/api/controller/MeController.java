@@ -18,7 +18,7 @@ public class MeController {
 
     @GetMapping
     public ResponseEntity<MeResponse> getMe(Authentication authentication) {
-        var dados = meService.findAuthenticatedUserData(authentication.getName());
-        return ResponseEntity.ok(MeResponse.from(dados));
+        var data = meService.findAuthenticatedUserData(authentication.getName());
+        return ResponseEntity.ok(MeResponse.from(data));
     }
 }

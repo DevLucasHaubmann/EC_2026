@@ -7,21 +7,21 @@ import com.tukan.api.service.MeService.AuthenticatedUserData;
 public record MeResponse(
         Integer id,
 
-        @JsonProperty("nome")
+        @JsonProperty("name")
         String name,
 
         String email,
 
-        @JsonProperty("tipo")
+        @JsonProperty("type")
         User.UserType type,
 
         User.UserState status,
 
-        @JsonProperty("perfil")
-        PerfilResponse profile,
+        @JsonProperty("profile")
+        ProfileResponse profile,
 
-        @JsonProperty("triagem")
-        TriagemResponse assessment
+        @JsonProperty("assessment")
+        AssessmentResponse assessment
 ) {
 
     public static MeResponse from(AuthenticatedUserData data) {
@@ -31,8 +31,8 @@ public record MeResponse(
                 data.user().getEmail(),
                 data.user().getType(),
                 data.user().getStatus(),
-                data.profile() != null ? PerfilResponse.from(data.profile()) : null,
-                data.assessment() != null ? TriagemResponse.from(data.assessment()) : null
+                data.profile() != null ? ProfileResponse.from(data.profile()) : null,
+                data.assessment() != null ? AssessmentResponse.from(data.assessment()) : null
         );
     }
 }

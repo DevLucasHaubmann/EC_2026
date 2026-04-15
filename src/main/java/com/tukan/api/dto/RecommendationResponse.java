@@ -11,25 +11,25 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public record RecomendacaoResponse(
+public record RecommendationResponse(
         Integer id,
 
-        @JsonProperty("usuarioId")
+        @JsonProperty("userId")
         Integer userId,
 
-        @JsonProperty("resumo")
+        @JsonProperty("summary")
         String summary,
 
-        @JsonProperty("plano")
+        @JsonProperty("plan")
         DailyMealPlan plan,
 
-        @JsonProperty("explicacaoRefeicoes")
+        @JsonProperty("mealExplanations")
         Map<String, String> mealExplanations,
 
-        @JsonProperty("dicas")
+        @JsonProperty("tips")
         List<String> tips,
 
-        @JsonProperty("alertas")
+        @JsonProperty("alerts")
         List<String> alerts,
 
         String provider,
@@ -37,14 +37,14 @@ public record RecomendacaoResponse(
 
         Recommendation.RecommendationStatus status,
 
-        @JsonProperty("criadoEm")
+        @JsonProperty("createdAt")
         Instant createdAt
 ) {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    public static RecomendacaoResponse from(Recommendation recommendation) {
-        return new RecomendacaoResponse(
+    public static RecommendationResponse from(Recommendation recommendation) {
+        return new RecommendationResponse(
                 recommendation.getId(),
                 recommendation.getUser().getId(),
                 recommendation.getSummary(),

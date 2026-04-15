@@ -14,10 +14,10 @@ public class MealDistributor {
 
     // Proporções definidas pela regra de produto (20/35/15/30)
     private static final Map<String, Double> MEAL_PROPORTIONS = Map.of(
-            "CAFE_MANHA", 0.20,
-            "ALMOCO", 0.35,
-            "LANCHE_TARDE", 0.15,
-            "JANTA", 0.30
+            "BREAKFAST", 0.20,
+            "LUNCH", 0.35,
+            "AFTERNOON_SNACK", 0.15,
+            "DINNER", 0.30
     );
 
     public Map<String, Double> distribute(double dailyCalories) {

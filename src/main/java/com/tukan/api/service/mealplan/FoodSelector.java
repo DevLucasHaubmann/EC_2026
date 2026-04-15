@@ -21,8 +21,8 @@ public class FoodSelector {
 
     // Categorias estruturais que definem a base de uma refeição
     private static final List<String> CORE_CATEGORIES = List.of(
-            "PROTEINA", "CARBOIDRATO", "LEGUME_VERDURA", "FRUTA",
-            "LEGUMINOSA", "LATICINIO", "GORDURA_BOA");
+            "PROTEIN", "CARBOHYDRATE", "VEGETABLE", "FRUIT",
+            "LEGUME", "DAIRY", "HEALTHY_FAT");
 
     private final Random random = new Random();
 
@@ -45,7 +45,7 @@ public class FoodSelector {
 
         Map<String, List<Food>> byCategory = shuffled.stream()
                 .collect(Collectors.groupingBy(
-                        f -> f.getCategory() != null ? f.getCategory() : "OUTROS",
+                        f -> f.getCategory() != null ? f.getCategory() : "OTHER",
                         LinkedHashMap::new,
                         Collectors.toList()));
 
@@ -66,7 +66,7 @@ public class FoodSelector {
 
             Map<String, List<Food>> reshuffledByCategory = reshuffled.stream()
                     .collect(Collectors.groupingBy(
-                            f -> f.getCategory() != null ? f.getCategory() : "OUTROS",
+                            f -> f.getCategory() != null ? f.getCategory() : "OTHER",
                             LinkedHashMap::new,
                             Collectors.toList()));
 

@@ -9,9 +9,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "sessao_usuario", indexes = {
+@Table(name = "user_session", indexes = {
         @Index(name = "idx_refresh_token_hash", columnList = "refresh_token_hash"),
-        @Index(name = "idx_usuario_id", columnList = "usuario_id")
+        @Index(name = "idx_session_user_id", columnList = "user_id")
 })
 @Getter
 @Setter
@@ -23,28 +23,28 @@ public class UserSession {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "usuario_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(name = "refresh_token_hash", nullable = false, length = 64)
     private String refreshTokenHash;
 
-    @Column(name = "criado_em", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    @Column(name = "expira_em", nullable = false)
+    @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    @Column(name = "revogado_em")
+    @Column(name = "revoked_at")
     private Instant revokedAt;
 
-    @Column(name = "ultimo_uso_em", nullable = false)
+    @Column(name = "last_used_at", nullable = false)
     private Instant lastUsedAt;
 
-    @Column(name = "dispositivo", length = 255)
+    @Column(name = "device", length = 255)
     private String device;
 
-    @Column(name = "endereco_ip", length = 45)
+    @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
     public boolean isExpired() {

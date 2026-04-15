@@ -4,20 +4,20 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.tukan.api.entity.Assessment;
 import jakarta.validation.constraints.Size;
 
-public record UpdateTriagemRequest(
+public record UpdateAssessmentRequest(
 
-        @JsonProperty("objetivo")
+        @JsonProperty("goal")
         Assessment.NutritionalGoal goal,
 
-        @JsonProperty("restricoesAlimentares")
+        @JsonProperty("dietaryRestrictions")
         @Size(max = 500, message = "Restrições alimentares devem ter no máximo 500 caracteres.")
         String dietaryRestrictions,
 
-        @JsonProperty("alergias")
+        @JsonProperty("allergies")
         @Size(max = 500, message = "Alergias devem ter no máximo 500 caracteres.")
         String allergies,
 
-        @JsonProperty("condicoesSaude")
+        @JsonProperty("healthConditions")
         @Size(max = 500, message = "Condições de saúde devem ter no máximo 500 caracteres.")
         String healthConditions
 ) {

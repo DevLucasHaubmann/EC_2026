@@ -7,15 +7,15 @@ import jakarta.validation.constraints.Size;
 
 public record FeedbackRequest(
 
-        @JsonProperty("avaliacao")
+        @JsonProperty("rating")
         @NotNull(message = "A avaliação é obrigatória.")
         RecommendationFeedback.Rating rating,
 
-        @JsonProperty("motivo")
+        @JsonProperty("reason")
         @Size(max = 500, message = "O motivo deve ter no máximo 500 caracteres.")
         String reason,
 
-        @JsonProperty("observacao")
+        @JsonProperty("observation")
         @Size(max = 1000, message = "A observação deve ter no máximo 1000 caracteres.")
         String observation
 ) {

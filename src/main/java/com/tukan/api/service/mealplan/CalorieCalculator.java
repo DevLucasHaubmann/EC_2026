@@ -22,27 +22,27 @@ public class CalorieCalculator {
         double height = profile.getHeightCm();
 
         return switch (profile.getGender()) {
-            case MASCULINO -> 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
-            case FEMININO -> 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age);
+            case MALE -> 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
+            case FEMALE -> 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age);
         };
     }
 
     private double getActivityMultiplier(NutritionalProfile.ActivityLevel level) {
         return switch (level) {
-            case SEDENTARIO -> 1.2;
-            case LEVE -> 1.375;
-            case MODERADO -> 1.55;
-            case INTENSO -> 1.725;
-            case MUITO_INTENSO -> 1.9;
+            case SEDENTARY -> 1.2;
+            case LIGHT -> 1.375;
+            case MODERATE -> 1.55;
+            case INTENSE -> 1.725;
+            case VERY_INTENSE -> 1.9;
         };
     }
 
     private double applyGoalAdjustment(double tdee, Assessment.NutritionalGoal goal) {
         return switch (goal) {
-            case PERDA_DE_PESO -> tdee * 0.80;
-            case GANHO_DE_MASSA -> tdee * 1.15;
-            case MANUTENCAO, REEDUCACAO_ALIMENTAR -> tdee;
-            case PERFORMANCE_ESPORTIVA -> tdee * 1.10;
+            case WEIGHT_LOSS -> tdee * 0.80;
+            case MUSCLE_GAIN -> tdee * 1.15;
+            case MAINTENANCE, DIETARY_REEDUCATION -> tdee;
+            case SPORTS_PERFORMANCE -> tdee * 1.10;
         };
     }
 }

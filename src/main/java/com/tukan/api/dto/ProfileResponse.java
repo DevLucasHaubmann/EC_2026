@@ -6,36 +6,36 @@ import com.tukan.api.entity.NutritionalProfile;
 import java.time.Instant;
 import java.time.LocalDate;
 
-public record PerfilResponse(
+public record ProfileResponse(
         Integer id,
 
-        @JsonProperty("usuarioId")
+        @JsonProperty("userId")
         Integer userId,
 
-        @JsonProperty("usuarioNome")
+        @JsonProperty("userName")
         String userName,
 
-        @JsonProperty("dataNascimento")
+        @JsonProperty("dateOfBirth")
         LocalDate dateOfBirth,
 
-        @JsonProperty("sexo")
+        @JsonProperty("gender")
         NutritionalProfile.Gender gender,
 
-        Double pesoKg,
-        Double alturaCm,
+        Double weightKg,
+        Double heightCm,
 
-        @JsonProperty("nivelAtividade")
+        @JsonProperty("activityLevel")
         NutritionalProfile.ActivityLevel activityLevel,
 
-        @JsonProperty("criadoEm")
+        @JsonProperty("createdAt")
         Instant createdAt,
 
-        @JsonProperty("atualizadoEm")
+        @JsonProperty("updatedAt")
         Instant updatedAt
 ) {
 
-    public static PerfilResponse from(NutritionalProfile profile) {
-        return new PerfilResponse(
+    public static ProfileResponse from(NutritionalProfile profile) {
+        return new ProfileResponse(
                 profile.getId(),
                 profile.getUser().getId(),
                 profile.getUser().getName(),
