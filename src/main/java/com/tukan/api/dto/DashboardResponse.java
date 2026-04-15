@@ -8,13 +8,13 @@ import com.tukan.api.service.MeService.AuthenticatedUserData;
 import java.time.LocalDate;
 
 public record DashboardResponse(
-        @JsonProperty("nome")
+        @JsonProperty("name")
         String name,
 
-        @JsonProperty("perfil")
+        @JsonProperty("profile")
         ProfileSummaryResponse profile,
 
-        @JsonProperty("triagem")
+        @JsonProperty("assessment")
         AssessmentSummaryResponse assessment,
 
         OnboardingStatus onboarding
@@ -30,20 +30,20 @@ public record DashboardResponse(
     }
 
     public record ProfileSummaryResponse(
-            Double pesoKg,
-            Double alturaCm,
-            Double imc,
+            Double weightKg,
+            Double heightCm,
+            Double bmi,
 
-            @JsonProperty("classificacaoImc")
+            @JsonProperty("bmiClassification")
             String bmiClassification,
 
-            @JsonProperty("nivelAtividade")
+            @JsonProperty("activityLevel")
             NutritionalProfile.ActivityLevel activityLevel,
 
-            @JsonProperty("sexo")
+            @JsonProperty("gender")
             NutritionalProfile.Gender gender,
 
-            @JsonProperty("idade")
+            @JsonProperty("age")
             Integer age
     ) {
 
@@ -78,16 +78,16 @@ public record DashboardResponse(
     }
 
     public record AssessmentSummaryResponse(
-            @JsonProperty("objetivo")
+            @JsonProperty("goal")
             Assessment.NutritionalGoal goal,
 
-            @JsonProperty("possuiRestricoes")
+            @JsonProperty("hasRestrictions")
             boolean hasRestrictions,
 
-            @JsonProperty("possuiAlergias")
+            @JsonProperty("hasAllergies")
             boolean hasAllergies,
 
-            @JsonProperty("possuiCondicoesSaude")
+            @JsonProperty("hasHealthConditions")
             boolean hasHealthConditions
     ) {
 

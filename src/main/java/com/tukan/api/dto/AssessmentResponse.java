@@ -5,36 +5,36 @@ import com.tukan.api.entity.Assessment;
 
 import java.time.Instant;
 
-public record TriagemResponse(
+public record AssessmentResponse(
         Integer id,
 
-        @JsonProperty("usuarioId")
+        @JsonProperty("userId")
         Integer userId,
 
-        @JsonProperty("usuarioNome")
+        @JsonProperty("userName")
         String userName,
 
-        @JsonProperty("objetivo")
+        @JsonProperty("goal")
         Assessment.NutritionalGoal goal,
 
-        @JsonProperty("restricoesAlimentares")
+        @JsonProperty("dietaryRestrictions")
         String dietaryRestrictions,
 
-        @JsonProperty("alergias")
+        @JsonProperty("allergies")
         String allergies,
 
-        @JsonProperty("condicoesSaude")
+        @JsonProperty("healthConditions")
         String healthConditions,
 
-        @JsonProperty("criadoEm")
+        @JsonProperty("createdAt")
         Instant createdAt,
 
-        @JsonProperty("atualizadoEm")
+        @JsonProperty("updatedAt")
         Instant updatedAt
 ) {
 
-    public static TriagemResponse from(Assessment assessment) {
-        return new TriagemResponse(
+    public static AssessmentResponse from(Assessment assessment) {
+        return new AssessmentResponse(
                 assessment.getId(),
                 assessment.getUser().getId(),
                 assessment.getUser().getName(),

@@ -2,20 +2,20 @@ package com.tukan.api.dto.ai;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public record AiPerfilContext(
-        @JsonProperty("sexo")
+public record AiProfileContext(
+        @JsonProperty("gender")
         String gender,
 
-        @JsonProperty("idade")
+        @JsonProperty("age")
         int age,
 
-        @JsonProperty("pesoKg")
+        @JsonProperty("weightKg")
         double weightKg,
 
-        @JsonProperty("alturaCm")
+        @JsonProperty("heightCm")
         double heightCm,
 
-        @JsonProperty("nivelAtividade")
+        @JsonProperty("activityLevel")
         String activityLevel
 ) {
 }

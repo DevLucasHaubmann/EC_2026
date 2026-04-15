@@ -1,8 +1,8 @@
 package com.tukan.api.service;
 
-import com.tukan.api.dto.AdminUpdatePerfilRequest;
-import com.tukan.api.dto.CreatePerfilRequest;
-import com.tukan.api.dto.UpdatePerfilRequest;
+import com.tukan.api.dto.AdminUpdateProfileRequest;
+import com.tukan.api.dto.CreateProfileRequest;
+import com.tukan.api.dto.UpdateProfileRequest;
 import com.tukan.api.entity.NutritionalProfile;
 import com.tukan.api.entity.User;
 import com.tukan.api.exception.BusinessException;
@@ -24,7 +24,7 @@ public class NutritionalProfileService {
     // ── Self-service ──────────────────────────────────────────────
 
     @Transactional
-    public NutritionalProfile createOwn(String authenticatedEmail, CreatePerfilRequest request) {
+    public NutritionalProfile createOwn(String authenticatedEmail, CreateProfileRequest request) {
         User user = userService.findByEmail(authenticatedEmail);
 
         if (nutritionalProfileRepository.existsByUserId(user.getId())) {
@@ -41,19 +41,19 @@ public class NutritionalProfileService {
     }
 
     @Transactional
-    public NutritionalProfile updateOwn(String authenticatedEmail, UpdatePerfilRequest request) {
-        if (request.pesoKg() == null && request.alturaCm() == null && request.activityLevel() == null) {
+    public NutritionalProfile updateOwn(String authenticatedEmail, UpdateProfileRequest request) {
+        if (request.weightKg() == null && request.heightCm() == null && request.activityLevel() == null) {
             throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
         }
 
         User user = userService.findByEmail(authenticatedEmail);
         NutritionalProfile profile = findByUserId(user.getId());
 
-        if (request.pesoKg() != null) {
-            profile.setWeightKg(request.pesoKg());
+        if (request.weightKg() != null) {
+            profile.setWeightKg(request.weightKg());
         }
-        if (request.alturaCm() != null) {
-            profile.setHeightCm(request.alturaCm());
+        if (request.heightCm() != null) {
+            profile.setHeightCm(request.heightCm());
         }
         if (request.activityLevel() != null) {
             profile.setActivityLevel(request.activityLevel());
@@ -76,7 +76,7 @@ public class NutritionalProfileService {
     }
 
     @Transactional
-    public NutritionalProfile createForUser(Integer userId, CreatePerfilRequest request) {
+    public NutritionalProfile createForUser(Integer userId, CreateProfileRequest request) {
         User user = userService.findById(userId);
 
         if (nutritionalProfileRepository.existsByUserId(userId)) {
@@ -87,9 +87,9 @@ public class NutritionalProfileService {
     }
 
     @Transactional
-    public NutritionalProfile update(Integer id, AdminUpdatePerfilRequest request) {
+    public NutritionalProfile update(Integer id, AdminUpdateProfileRequest request) {
         if (request.dateOfBirth() == null && request.gender() == null
-                && request.pesoKg() == null && request.alturaCm() == null
+                && request.weightKg() == null && request.heightCm() == null
                 && request.activityLevel() == null) {
             throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
         }
@@ -102,11 +102,11 @@ public class NutritionalProfileService {
         if (request.gender() != null) {
             profile.setGender(request.gender());
         }
-        if (request.pesoKg() != null) {
-            profile.setWeightKg(request.pesoKg());
+        if (request.weightKg() != null) {
+            profile.setWeightKg(request.weightKg());
         }
-        if (request.alturaCm() != null) {
-            profile.setHeightCm(request.alturaCm());
+        if (request.heightCm() != null) {
+            profile.setHeightCm(request.heightCm());
         }
         if (request.activityLevel() != null) {
             profile.setActivityLevel(request.activityLevel());
@@ -124,13 +124,13 @@ public class NutritionalProfileService {
 
     // ── Internal methods ──────────────────────────────────────────
 
-    private NutritionalProfile createProfile(User user, CreatePerfilRequest request) {
+    private NutritionalProfile createProfile(User user, CreateProfileRequest request) {
         NutritionalProfile profile = new NutritionalProfile();
         profile.setUser(user);
         profile.setDateOfBirth(request.dateOfBirth());
         profile.setGender(request.gender());
-        profile.setWeightKg(request.pesoKg());
-        profile.setHeightCm(request.alturaCm());
+        profile.setWeightKg(request.weightKg());
+        profile.setHeightCm(request.heightCm());
         profile.setActivityLevel(request.activityLevel());
 
         return nutritionalProfileRepository.save(profile);

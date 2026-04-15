@@ -4,17 +4,17 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
-public record AiTriagemContext(
-        @JsonProperty("objetivo")
+public record AiAssessmentContext(
+        @JsonProperty("goal")
         String goal,
 
-        @JsonProperty("restricoesAlimentares")
+        @JsonProperty("dietaryRestrictions")
         List<String> dietaryRestrictions,
 
-        @JsonProperty("alergias")
+        @JsonProperty("allergies")
         List<String> allergies,
 
-        @JsonProperty("condicoesSaude")
+        @JsonProperty("healthConditions")
         List<String> healthConditions
 ) {
 }

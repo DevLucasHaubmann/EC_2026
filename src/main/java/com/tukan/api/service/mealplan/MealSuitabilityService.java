@@ -92,17 +92,17 @@ public class MealSuitabilityService {
     );
 
     private static final Map<String, Set<String>> BLACKLISTS = Map.of(
-            "CAFE_MANHA", CAFE_BLACKLIST,
-            "ALMOCO", ALMOCO_BLACKLIST,
-            "LANCHE_TARDE", LANCHE_BLACKLIST,
-            "JANTA", JANTA_BLACKLIST
+            "BREAKFAST", CAFE_BLACKLIST,
+            "LUNCH", ALMOCO_BLACKLIST,
+            "AFTERNOON_SNACK", LANCHE_BLACKLIST,
+            "DINNER", JANTA_BLACKLIST
     );
 
     private static final Map<String, Set<String>> PREFERRED = Map.of(
-            "CAFE_MANHA", CAFE_PREFERRED,
-            "ALMOCO", ALMOCO_PREFERRED,
-            "LANCHE_TARDE", LANCHE_PREFERRED,
-            "JANTA", JANTA_PREFERRED
+            "BREAKFAST", CAFE_PREFERRED,
+            "LUNCH", ALMOCO_PREFERRED,
+            "AFTERNOON_SNACK", LANCHE_PREFERRED,
+            "DINNER", JANTA_PREFERRED
     );
 
     /**

@@ -25,7 +25,7 @@ public class MealPlanAiService {
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
-    public MealPlanRecomendacaoResponse generate(String authenticatedEmail) {
+    public MealPlanRecommendationResponse generate(String authenticatedEmail) {
         DailyMealPlan plan = mealPlanEngine.generatePlan(authenticatedEmail);
         MealPlanContext context = mealPlanEngine.buildContext(authenticatedEmail);
 
@@ -37,7 +37,7 @@ public class MealPlanAiService {
 
             MealPlanAiResponse aiResponse = parseResponse(providerResult.content());
 
-            return new MealPlanRecomendacaoResponse(
+            return new MealPlanRecommendationResponse(
                     "COMPLETO",
                     aiResponse.summary(),
                     plan,
@@ -53,8 +53,8 @@ public class MealPlanAiService {
         }
     }
 
-    private MealPlanRecomendacaoResponse buildFallbackResponse(DailyMealPlan plan) {
-        return new MealPlanRecomendacaoResponse(
+    private MealPlanRecommendationResponse buildFallbackResponse(DailyMealPlan plan) {
+        return new MealPlanRecommendationResponse(
                 "PARCIAL",
                 "Plano alimentar gerado com sucesso. O complemento da IA está temporariamente indisponível.",
                 plan,

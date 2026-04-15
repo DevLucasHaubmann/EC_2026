@@ -26,8 +26,8 @@ public class OnboardingService {
     }
 
     private String resolveNextStep(boolean hasProfile, boolean hasAssessment) {
-        if (!hasProfile) return "/perfil/primeiro-acesso";
-        if (!hasAssessment) return "/triagem";
+        if (!hasProfile) return "/profiles/first-access";
+        if (!hasAssessment) return "/assessments";
         return "/dashboard";
     }
 }

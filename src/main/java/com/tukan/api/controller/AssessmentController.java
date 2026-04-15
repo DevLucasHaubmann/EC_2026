@@ -1,11 +1,11 @@
 package com.tukan.api.controller;
 
-import com.tukan.api.dto.AdminUpdateTriagemRequest;
-import com.tukan.api.dto.CreateTriagemRequest;
+import com.tukan.api.dto.AdminUpdateAssessmentRequest;
+import com.tukan.api.dto.CreateAssessmentRequest;
 import com.tukan.api.dto.OnboardingStatus;
-import com.tukan.api.dto.TriagemCreatedResponse;
-import com.tukan.api.dto.TriagemResponse;
-import com.tukan.api.dto.UpdateTriagemRequest;
+import com.tukan.api.dto.AssessmentCreatedResponse;
+import com.tukan.api.dto.AssessmentResponse;
+import com.tukan.api.dto.UpdateAssessmentRequest;
 import com.tukan.api.entity.Assessment;
 import com.tukan.api.service.OnboardingService;
 import com.tukan.api.service.AssessmentService;
@@ -20,9 +20,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/triagem")
+@RequestMapping("/assessments")
 @RequiredArgsConstructor
-public class TriagemController {
+public class AssessmentController {
 
     private final AssessmentService assessmentService;
     private final OnboardingService onboardingService;
@@ -30,27 +30,27 @@ public class TriagemController {
     // ── Self-service (qualquer usuário autenticado) ───────────────
 
     @PostMapping("/me")
-    public ResponseEntity<TriagemCreatedResponse> createOwn(
-            @RequestBody @Valid CreateTriagemRequest request,
+    public ResponseEntity<AssessmentCreatedResponse> createOwn(
+            @RequestBody @Valid CreateAssessmentRequest request,
             Authentication authentication) {
         Assessment assessment = assessmentService.createOwn(authentication.getName(), request);
         OnboardingStatus onboarding = onboardingService.checkOnboarding(assessment.getUser().getId());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(TriagemCreatedResponse.of(assessment, onboarding));
+                .body(AssessmentCreatedResponse.of(assessment, onboarding));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<TriagemResponse> findOwn(Authentication authentication) {
+    public ResponseEntity<AssessmentResponse> findOwn(Authentication authentication) {
         return ResponseEntity.ok(
-                TriagemResponse.from(assessmentService.findOwn(authentication.getName())));
+                AssessmentResponse.from(assessmentService.findOwn(authentication.getName())));
     }
 
     @PutMapping("/me")
-    public ResponseEntity<TriagemResponse> updateOwn(
-            @RequestBody @Valid UpdateTriagemRequest request,
+    public ResponseEntity<AssessmentResponse> updateOwn(
+            @RequestBody @Valid UpdateAssessmentRequest request,
             Authentication authentication) {
         return ResponseEntity.ok(
-                TriagemResponse.from(
+                AssessmentResponse.from(
                         assessmentService.updateOwn(authentication.getName(), request)));
     }
 
@@ -58,35 +58,35 @@ public class TriagemController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Page<TriagemResponse>> findAll(Pageable pageable) {
-        Page<TriagemResponse> assessments = assessmentService.findAll(pageable)
-                .map(TriagemResponse::from);
+    public ResponseEntity<Page<AssessmentResponse>> findAll(Pageable pageable) {
+        Page<AssessmentResponse> assessments = assessmentService.findAll(pageable)
+                .map(AssessmentResponse::from);
         return ResponseEntity.ok(assessments);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<TriagemResponse> findById(@PathVariable Integer id) {
-        return ResponseEntity.ok(TriagemResponse.from(assessmentService.findById(id)));
+    public ResponseEntity<AssessmentResponse> findById(@PathVariable Integer id) {
+        return ResponseEntity.ok(AssessmentResponse.from(assessmentService.findById(id)));
     }
 
-    @PostMapping("/usuario/{usuarioId}")
+    @PostMapping("/users/{userId}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<TriagemResponse> createForUser(
-            @PathVariable Integer usuarioId,
-            @RequestBody @Valid CreateTriagemRequest request) {
+    public ResponseEntity<AssessmentResponse> createForUser(
+            @PathVariable Integer userId,
+            @RequestBody @Valid CreateAssessmentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(TriagemResponse.from(
-                        assessmentService.createForUser(usuarioId, request)));
+                .body(AssessmentResponse.from(
+                        assessmentService.createForUser(userId, request)));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<TriagemResponse> update(
+    public ResponseEntity<AssessmentResponse> update(
             @PathVariable Integer id,
-            @RequestBody @Valid AdminUpdateTriagemRequest request) {
+            @RequestBody @Valid AdminUpdateAssessmentRequest request) {
         return ResponseEntity.ok(
-                TriagemResponse.from(assessmentService.update(id, request)));
+                AssessmentResponse.from(assessmentService.update(id, request)));
     }
 
     @DeleteMapping("/{id}")

@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "usuario")
+@Table(name = "app_user")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -29,17 +29,17 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "nome", nullable = false, length = 100)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
     @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(name = "senha", nullable = false, length = 255)
+    @Column(name = "password", nullable = false, length = 255)
     private String password;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "tipo", nullable = false)
+    @Column(name = "type", nullable = false)
     private UserType type = UserType.USER;
 
     @Enumerated(EnumType.STRING)

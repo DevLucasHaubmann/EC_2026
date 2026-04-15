@@ -10,7 +10,7 @@ public record LoginRequest(
         @NotBlank(message = "O e-mail é obrigatório.")
         String email,
 
-        @JsonProperty("senha")
+        @JsonProperty("password")
         @NotBlank(message = "A senha é obrigatória.")
         String password
 ) {

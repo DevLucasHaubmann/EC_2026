@@ -48,11 +48,11 @@ public class FoodFilterService {
     private static final Map<String, Set<String>> HEALTH_CONDITION_BLOCKED_CATEGORIES;
     static {
         Map<String, Set<String>> map = new HashMap<>();
-        map.put("diabetes", Set.of("BEBIDA"));
-        map.put("diabetico", Set.of("BEBIDA"));
-        map.put("diabetica", Set.of("BEBIDA"));
-        map.put("diabetes tipo 2", Set.of("BEBIDA"));
-        map.put("diabetes tipo 1", Set.of("BEBIDA"));
+        map.put("diabetes", Set.of("BEVERAGE"));
+        map.put("diabetico", Set.of("BEVERAGE"));
+        map.put("diabetica", Set.of("BEVERAGE"));
+        map.put("diabetes tipo 2", Set.of("BEVERAGE"));
+        map.put("diabetes tipo 1", Set.of("BEVERAGE"));
         HEALTH_CONDITION_BLOCKED_CATEGORIES = Collections.unmodifiableMap(map);
     }
 
@@ -87,10 +87,10 @@ public class FoodFilterService {
 
     public Map<String, List<Food>> groupByMealType(List<Food> foods) {
         Map<String, List<Food>> grouped = new LinkedHashMap<>();
-        grouped.put("CAFE_MANHA", new ArrayList<>());
-        grouped.put("ALMOCO", new ArrayList<>());
-        grouped.put("LANCHE_TARDE", new ArrayList<>());
-        grouped.put("JANTA", new ArrayList<>());
+        grouped.put("BREAKFAST", new ArrayList<>());
+        grouped.put("LUNCH", new ArrayList<>());
+        grouped.put("AFTERNOON_SNACK", new ArrayList<>());
+        grouped.put("DINNER", new ArrayList<>());
 
         for (Food food : foods) {
             String suitable = food.getSuitableMeals();

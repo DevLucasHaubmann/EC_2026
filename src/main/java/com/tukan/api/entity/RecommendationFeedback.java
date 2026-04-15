@@ -8,8 +8,8 @@ import lombok.Setter;
 import java.time.Instant;
 
 @Entity
-@Table(name = "feedback_recomendacao", indexes = {
-        @Index(name = "idx_feedback_recomendacao_id", columnList = "recomendacao_id")
+@Table(name = "recommendation_feedback", indexes = {
+        @Index(name = "idx_feedback_recommendation_id", columnList = "recommendation_id")
 })
 @Getter
 @Setter
@@ -26,20 +26,20 @@ public class RecommendationFeedback {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recomendacao_id", nullable = false)
+    @JoinColumn(name = "recommendation_id", nullable = false)
     private Recommendation recommendation;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "avaliacao", nullable = false)
+    @Column(name = "rating", nullable = false)
     private Rating rating;
 
-    @Column(name = "motivo", length = 500)
+    @Column(name = "reason", length = 500)
     private String reason;
 
-    @Column(name = "observacao", length = 1000)
+    @Column(name = "observation", length = 1000)
     private String observation;
 
-    @Column(name = "criado_em", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @PrePersist

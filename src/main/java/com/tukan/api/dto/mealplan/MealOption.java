@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public record MealOption(
-        @JsonProperty("opcao") int optionNumber,
-        @JsonProperty("itens") List<MealPlanFoodItem> items,
-        @JsonProperty("totalCalorias") double totalCalories,
-        @JsonProperty("totalProteina") double totalProtein,
-        @JsonProperty("totalCarboidrato") double totalCarbs,
-        @JsonProperty("totalGordura") double totalFat
+        @JsonProperty("optionNumber") int optionNumber,
+        @JsonProperty("items") List<MealPlanFoodItem> items,
+        @JsonProperty("totalCalories") double totalCalories,
+        @JsonProperty("totalProtein") double totalProtein,
+        @JsonProperty("totalCarbs") double totalCarbs,
+        @JsonProperty("totalFat") double totalFat
 ) {}

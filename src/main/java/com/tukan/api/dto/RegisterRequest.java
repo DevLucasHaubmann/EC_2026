@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
 
-        @JsonProperty("nome")
+        @JsonProperty("name")
         @NotBlank(message = "O nome é obrigatório.")
         @Size(max = 100, message = "O nome deve ter no máximo 100 caracteres.")
         String name,
@@ -16,7 +16,7 @@ public record RegisterRequest(
         @NotBlank(message = "O e-mail é obrigatório.")
         String email,
 
-        @JsonProperty("senha")
+        @JsonProperty("password")
         @NotBlank(message = "A senha é obrigatória.")
         @Size(min = 6, message = "A senha deve ter pelo menos 6 caracteres.")
         String password

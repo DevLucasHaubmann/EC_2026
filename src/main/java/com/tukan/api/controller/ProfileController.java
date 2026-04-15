@@ -1,11 +1,11 @@
 package com.tukan.api.controller;
 
-import com.tukan.api.dto.AdminUpdatePerfilRequest;
-import com.tukan.api.dto.CreatePerfilRequest;
+import com.tukan.api.dto.AdminUpdateProfileRequest;
+import com.tukan.api.dto.CreateProfileRequest;
 import com.tukan.api.dto.OnboardingStatus;
-import com.tukan.api.dto.PerfilCreatedResponse;
-import com.tukan.api.dto.PerfilResponse;
-import com.tukan.api.dto.UpdatePerfilRequest;
+import com.tukan.api.dto.ProfileCreatedResponse;
+import com.tukan.api.dto.ProfileResponse;
+import com.tukan.api.dto.UpdateProfileRequest;
 import com.tukan.api.entity.NutritionalProfile;
 import com.tukan.api.service.OnboardingService;
 import com.tukan.api.service.NutritionalProfileService;
@@ -20,9 +20,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/perfil")
+@RequestMapping("/profiles")
 @RequiredArgsConstructor
-public class PerfilController {
+public class ProfileController {
 
     private final NutritionalProfileService nutritionalProfileService;
     private final OnboardingService onboardingService;
@@ -30,27 +30,27 @@ public class PerfilController {
     // ── Self-service (qualquer usuário autenticado) ───────────────
 
     @PostMapping("/me")
-    public ResponseEntity<PerfilCreatedResponse> createOwn(
-            @RequestBody @Valid CreatePerfilRequest request,
+    public ResponseEntity<ProfileCreatedResponse> createOwn(
+            @RequestBody @Valid CreateProfileRequest request,
             Authentication authentication) {
         NutritionalProfile profile = nutritionalProfileService.createOwn(authentication.getName(), request);
         OnboardingStatus onboarding = onboardingService.checkOnboarding(profile.getUser().getId());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(PerfilCreatedResponse.of(profile, onboarding));
+                .body(ProfileCreatedResponse.of(profile, onboarding));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<PerfilResponse> findOwn(Authentication authentication) {
+    public ResponseEntity<ProfileResponse> findOwn(Authentication authentication) {
         return ResponseEntity.ok(
-                PerfilResponse.from(nutritionalProfileService.findOwn(authentication.getName())));
+                ProfileResponse.from(nutritionalProfileService.findOwn(authentication.getName())));
     }
 
     @PutMapping("/me")
-    public ResponseEntity<PerfilResponse> updateOwn(
-            @RequestBody @Valid UpdatePerfilRequest request,
+    public ResponseEntity<ProfileResponse> updateOwn(
+            @RequestBody @Valid UpdateProfileRequest request,
             Authentication authentication) {
         return ResponseEntity.ok(
-                PerfilResponse.from(
+                ProfileResponse.from(
                         nutritionalProfileService.updateOwn(authentication.getName(), request)));
     }
 
@@ -58,35 +58,35 @@ public class PerfilController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Page<PerfilResponse>> findAll(Pageable pageable) {
-        Page<PerfilResponse> profiles = nutritionalProfileService.findAll(pageable)
-                .map(PerfilResponse::from);
+    public ResponseEntity<Page<ProfileResponse>> findAll(Pageable pageable) {
+        Page<ProfileResponse> profiles = nutritionalProfileService.findAll(pageable)
+                .map(ProfileResponse::from);
         return ResponseEntity.ok(profiles);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<PerfilResponse> findById(@PathVariable Integer id) {
-        return ResponseEntity.ok(PerfilResponse.from(nutritionalProfileService.findById(id)));
+    public ResponseEntity<ProfileResponse> findById(@PathVariable Integer id) {
+        return ResponseEntity.ok(ProfileResponse.from(nutritionalProfileService.findById(id)));
     }
 
-    @PostMapping("/usuario/{usuarioId}")
+    @PostMapping("/users/{userId}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<PerfilResponse> createForUser(
-            @PathVariable Integer usuarioId,
-            @RequestBody @Valid CreatePerfilRequest request) {
+    public ResponseEntity<ProfileResponse> createForUser(
+            @PathVariable Integer userId,
+            @RequestBody @Valid CreateProfileRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(PerfilResponse.from(
-                        nutritionalProfileService.createForUser(usuarioId, request)));
+                .body(ProfileResponse.from(
+                        nutritionalProfileService.createForUser(userId, request)));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<PerfilResponse> update(
+    public ResponseEntity<ProfileResponse> update(
             @PathVariable Integer id,
-            @RequestBody @Valid AdminUpdatePerfilRequest request) {
+            @RequestBody @Valid AdminUpdateProfileRequest request) {
         return ResponseEntity.ok(
-                PerfilResponse.from(nutritionalProfileService.update(id, request)));
+                ProfileResponse.from(nutritionalProfileService.update(id, request)));
     }
 
     @DeleteMapping("/{id}")

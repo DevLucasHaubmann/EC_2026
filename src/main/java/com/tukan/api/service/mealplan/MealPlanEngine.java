@@ -1,7 +1,7 @@
 package com.tukan.api.service.mealplan;
 
-import com.tukan.api.dto.ai.AiPerfilContext;
-import com.tukan.api.dto.ai.AiTriagemContext;
+import com.tukan.api.dto.ai.AiProfileContext;
+import com.tukan.api.dto.ai.AiAssessmentContext;
 import com.tukan.api.dto.mealplan.*;
 import com.tukan.api.dto.mealplan.MealPlanContext.EligibleFoodSummary;
 import com.tukan.api.entity.Assessment;
@@ -97,7 +97,7 @@ public class MealPlanEngine {
         validateMealCoverage(grouped, distribution);
         Map<String, List<EligibleFoodSummary>> foodsByMeal = buildFoodSummaries(grouped);
 
-        AiPerfilContext profileCtx = new AiPerfilContext(
+        AiProfileContext profileCtx = new AiProfileContext(
                 data.profile.getGender().name(),
                 data.age,
                 data.profile.getWeightKg(),
@@ -105,7 +105,7 @@ public class MealPlanEngine {
                 data.profile.getActivityLevel().name()
         );
 
-        AiTriagemContext assessmentCtx = buildTriagemContext(data.assessment);
+        AiAssessmentContext assessmentCtx = buildAssessmentContext(data.assessment);
 
         return new MealPlanContext(profileCtx, assessmentCtx,
                 Math.round(dailyCalories), distribution, foodsByMeal);
@@ -216,8 +216,8 @@ public class MealPlanEngine {
         return value != null ? value.doubleValue() : 0.0;
     }
 
-    private AiTriagemContext buildTriagemContext(Assessment assessment) {
-        return new AiTriagemContext(
+    private AiAssessmentContext buildAssessmentContext(Assessment assessment) {
+        return new AiAssessmentContext(
                 assessment.getGoal().name(),
                 normalizeList(assessment.getDietaryRestrictions()),
                 normalizeList(assessment.getAllergies()),

@@ -65,7 +65,7 @@ public class FoodCurationService {
      * Categorias inteiras que devem ser excluídas da seleção de alimentos.
      */
     private static final Set<String> BLOCKED_CATEGORIES = Set.of(
-            "ADITIVO", "CONDIMENTO", "TEMPERO", "MOLHO"
+            "ADDITIVE", "CONDIMENT", "SEASONING", "SAUCE"
     );
 
     /**
