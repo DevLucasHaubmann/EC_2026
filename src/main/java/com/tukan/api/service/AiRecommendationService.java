@@ -12,21 +12,21 @@ import com.tukan.api.exception.BusinessException;
 import com.tukan.api.repository.RecommendationFeedbackRepository;
 import com.tukan.api.repository.RecommendationRepository;
 import com.tukan.api.service.mealplan.MealPlanAiService;
-import com.tukan.api.service.mealplan.MealPlanEngine;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiRecommendationService {
 
     private final UserService userService;
     private final MealPlanAiService mealPlanAiService;
-    private final MealPlanEngine mealPlanEngine;
     private final RecommendationRepository recommendationRepository;
     private final RecommendationFeedbackRepository recommendationFeedbackRepository;
     private final ObjectMapper objectMapper;
@@ -43,9 +43,11 @@ public class AiRecommendationService {
         archiveActiveRecommendations(user.getId());
 
         MealPlanRecommendationResponse response = mealPlanAiService.generate(authenticatedEmail);
-        String contextJson = toJson(mealPlanEngine.buildContext(authenticatedEmail));
 
-        Recommendation recommendation = toEntity(user, response, contextJson);
+        log.info("Recommendation generated for user={} status={} provider={} model={}",
+                user.getId(), response.status(), response.provider(), response.model());
+
+        Recommendation recommendation = toEntity(user, response);
         return recommendationRepository.save(recommendation);
     }
 
@@ -139,7 +141,7 @@ public class AiRecommendationService {
                         "Recomendação não encontrada.", HttpStatus.NOT_FOUND));
     }
 
-    private Recommendation toEntity(User user, MealPlanRecommendationResponse response, String contextJson) {
+    private Recommendation toEntity(User user, MealPlanRecommendationResponse response) {
         Recommendation recommendation = new Recommendation();
         recommendation.setUser(user);
         recommendation.setSummary(response.summary());
@@ -147,9 +149,10 @@ public class AiRecommendationService {
         recommendation.setMealExplanationsJson(toJson(response.mealExplanations()));
         recommendation.setTipsJson(toJson(response.tips()));
         recommendation.setAlertsJson(toJson(response.alerts()));
-        recommendation.setContextJson(contextJson);
+        recommendation.setContextJson(toJson(response.context()));
         recommendation.setProvider(response.provider());
         recommendation.setModel(response.model());
+        recommendation.setGenerationStatus(response.status());
         recommendation.setStatus(Recommendation.RecommendationStatus.GENERATED);
         return recommendation;
     }
