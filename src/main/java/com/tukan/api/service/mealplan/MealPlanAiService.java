@@ -38,40 +38,35 @@ public class MealPlanAiService {
             MealPlanAiResponse aiResponse = parseResponse(providerResult.content());
 
             return new MealPlanRecommendationResponse(
-                    "COMPLETE",
+                    "COMPLETO",
                     aiResponse.summary(),
                     plan,
                     aiResponse.mealExplanations(),
                     aiResponse.tips(),
                     aiResponse.alerts(),
                     providerResult.provider(),
-                    providerResult.model(),
-                    context
+                    providerResult.model()
             );
         } catch (Exception e) {
             log.error("Falha ao enriquecer plano alimentar com IA. Retornando plano sem complemento da IA.", e);
-            return buildFallbackResponse(plan, context);
+            return buildFallbackResponse(plan);
         }
     }
 
-    private MealPlanRecommendationResponse buildFallbackResponse(DailyMealPlan plan, MealPlanContext context) {
+    private MealPlanRecommendationResponse buildFallbackResponse(DailyMealPlan plan) {
         return new MealPlanRecommendationResponse(
-                "PARTIAL",
+                "PARCIAL",
                 "Plano alimentar gerado com sucesso. O complemento da IA está temporariamente indisponível.",
                 plan,
                 Map.of(),
                 Collections.emptyList(),
                 Collections.emptyList(),
                 "fallback",
-                "none",
-                context
+                "none"
         );
     }
 
     private MealPlanAiResponse parseResponse(String rawResponse) {
-        if (rawResponse == null || rawResponse.isBlank()) {
-            throw new AiProviderException("O provider de IA retornou uma resposta sem conteúdo.");
-        }
         try {
             MealPlanAiResponse response = objectMapper.readValue(rawResponse, MealPlanAiResponse.class);
             validateResponse(response);
@@ -79,28 +74,27 @@ public class MealPlanAiService {
         } catch (AiProviderException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Falha ao interpretar resposta da IA. Raw response: {}", rawResponse, e);
             throw new AiProviderException("A resposta da IA para o plano alimentar não pôde ser interpretada. Tente novamente.", e);
         }
     }
 
     private void validateResponse(MealPlanAiResponse response) {
         if (response.summary() == null || response.summary().isBlank()) {
-            throw new AiProviderException("Resposta da IA incompleta: campo 'summary' ausente.");
+            throw new AiProviderException("Resposta da IA incompleta: campo 'resumo' ausente.");
         }
         if (response.mealExplanations() == null || response.mealExplanations().isEmpty()) {
-            throw new AiProviderException("Resposta da IA incompleta: campo 'mealExplanations' ausente ou vazio.");
+            throw new AiProviderException("Resposta da IA incompleta: campo 'explicacaoRefeicoes' ausente.");
         }
-        boolean hasBlankExplanation = response.mealExplanations().entrySet().stream()
-                .anyMatch(e -> e.getValue() == null || e.getValue().isBlank());
+        boolean hasBlankExplanation = response.mealExplanations().values().stream()
+                .anyMatch(v -> v == null || v.isBlank());
         if (hasBlankExplanation) {
-            throw new AiProviderException("Resposta da IA incompleta: 'mealExplanations' contém entradas sem texto.");
+            throw new AiProviderException("Resposta da IA incompleta: 'explicacaoRefeicoes' contém valores em branco.");
         }
         if (response.tips() == null) {
-            throw new AiProviderException("Resposta da IA incompleta: campo 'tips' ausente.");
+            throw new AiProviderException("Resposta da IA incompleta: campo 'dicas' ausente.");
         }
         if (response.alerts() == null) {
-            throw new AiProviderException("Resposta da IA incompleta: campo 'alerts' ausente.");
+            throw new AiProviderException("Resposta da IA incompleta: campo 'alertas' ausente.");
         }
     }
 }

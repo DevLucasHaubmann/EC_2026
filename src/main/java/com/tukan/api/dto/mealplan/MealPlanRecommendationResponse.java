@@ -13,6 +13,5 @@ public record MealPlanRecommendationResponse(
         @JsonProperty("tips") List<String> tips,
         @JsonProperty("alerts") List<String> alerts,
         String provider,
-        String model,
-        MealPlanContext context
+        String model
 ) {}
