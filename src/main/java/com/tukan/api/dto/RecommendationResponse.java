@@ -35,9 +35,6 @@ public record RecommendationResponse(
         String provider,
         String model,
 
-        @JsonProperty("generationStatus")
-        String generationStatus,
-
         Recommendation.RecommendationStatus status,
 
         @JsonProperty("createdAt")
@@ -57,7 +54,6 @@ public record RecommendationResponse(
                 parseJsonOrEmpty(recommendation.getAlertsJson(), new TypeReference<List<String>>() {}, Collections.emptyList()),
                 recommendation.getProvider(),
                 recommendation.getModel(),
-                recommendation.getGenerationStatus(),
                 recommendation.getStatus(),
                 recommendation.getCreatedAt()
         );

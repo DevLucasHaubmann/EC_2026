@@ -54,9 +54,6 @@ public class Recommendation {
     @Column(name = "model", nullable = false, length = 100)
     private String model;
 
-    @Column(name = "generation_status", nullable = false, length = 20)
-    private String generationStatus;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private RecommendationStatus status;
