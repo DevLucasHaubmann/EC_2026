@@ -1,11 +1,10 @@
 /**
  * Pinia Store Modules
- * 
+ *
  * State management stores:
- * - authStore: Authentication state
- * - userStore: User data
- * - uiStore: UI state (modals, notifications, etc)
- * - etc.
+ * - useAuthStore: Authentication state (tokens, session, login, register, logout)
+ * - userStore: User data (a implementar)
+ * - uiStore: UI state — modals, notifications, etc (a implementar)
  */
 
-export {}
+export { useAuthStore } from './auth'
