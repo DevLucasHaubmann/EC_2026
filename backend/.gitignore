@@ -1,13 +1,8 @@
-# Backend
+# Build output
 backend/target/
-backend/src/main/resources/application-local.properties
-
-# Frontend
-frontend/node_modules/
 frontend/dist/
+frontend/node_modules/
 frontend/.vite/
-
-# Generic build output
 build/
 out/
 
@@ -29,15 +24,16 @@ Thumbs.db
 .springBeans
 .sts4-cache/
 
-# Environment / local files
+# Local/sensitive files
+backend/src/main/resources/application-local.properties
 .env
 .env.*
 !.env.example
 
-# Local assistant files
+# Claude / local assistant files
 .claude/
 CLAUDE.md
 
-# Keep root essentials
+# Keep essential root files versioned
 !.gitignore
 !README.md
