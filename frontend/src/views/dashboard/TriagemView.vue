@@ -22,21 +22,34 @@ const carregando = ref(false);
 const erroSubmissao = ref<string | null>(null);
 const etapaAtual = ref(1);
 
-const listaCondicoes = ['Diabetes Tipo 1', 'Diabetes Tipo 2', 'Hipertensão', 'Gastrite', 'Hipotireoidismo'];
-const listaAlergias = ['Glúten', 'Lactose', 'Frutos do Mar', 'Amendoim', 'Ovo', 'Soja'];
+const listaCondicoes = [
+  'Diabetes Tipo 1', 'Diabetes Tipo 2', 'Hipertensão', 'Colesterol Alto',
+  'Gastrite', 'Anemia', 'Hipotireoidismo', 'Hipertireoidismo', 'Síndrome do Intestino Irritável',
+];
+const listaAlergias = [
+  'Glúten', 'Lactose', 'Frutos do Mar', 'Amendoim', 'Ovo',
+  'Soja', 'Proteína do Leite (APLV)', 'Trigo', 'Nozes',
+];
+
+const OBJETIVOS = [
+  { value: 'WEIGHT_LOSS',         label: 'Emagrecimento',         desc: 'Redução de gordura com déficit calórico.' },
+  { value: 'MUSCLE_GAIN',         label: 'Ganho de Massa',         desc: 'Aumento de volume muscular com superávit.' },
+  { value: 'MAINTENANCE',         label: 'Manutenção',             desc: 'Manter o peso e a composição atual.' },
+  { value: 'DIETARY_REEDUCATION', label: 'Reeducação Alimentar',   desc: 'Melhora dos hábitos alimentares.' },
+  { value: 'SPORTS_PERFORMANCE',  label: 'Performance Esportiva',  desc: 'Otimização para rendimento atlético.' },
+];
 
 const form = ref({
   dataNascimento: '',
   genero: '',
-  peso: null,
-  altura: null,
+  peso: null as number | null,
+  altura: null as number | null,
   objetivo: '',
-  pesoAlvo: null,
   nivelAtividade: 'MODERATE',
   qtdRefeicoes: 3,
   preferenciaAlimentar: 'ONIVORA',
   condicoesSaude: [] as string[],
-  alergias: [] as string[]
+  alergias: [] as string[],
 });
 
 // Quantas etapas o usuário vai ver de fato
@@ -56,7 +69,7 @@ const toggleItem = (lista: 'condicoesSaude' | 'alergias', item: string) => {
 
 const etapaValida = computed(() => {
   if (etapaAtual.value === 1) return form.value.dataNascimento && form.value.genero && form.value.peso && form.value.altura;
-  if (etapaAtual.value === 2) return form.value.objetivo && form.value.pesoAlvo;
+  if (etapaAtual.value === 2) return !!form.value.objetivo;
   if (etapaAtual.value === 3) return form.value.qtdRefeicoes >= 3;
   return true;
 });
@@ -100,7 +113,7 @@ const finalizarTriagem = async () => {
     }
 
     await assessmentService.createOwn({
-      goal: form.value.objetivo === 'perda' ? 'WEIGHT_LOSS' : 'MUSCLE_GAIN',
+      goal: form.value.objetivo,
       dietaryRestrictions: form.value.preferenciaAlimentar,
       healthConditions: form.value.condicoesSaude.join(', '),
       allergies: form.value.alergias.join(', '),
@@ -193,21 +206,19 @@ const finalizarTriagem = async () => {
         <!-- ETAPA 2: OBJETIVO (RF007) -->
         <div v-if="etapaAtual === 2" class="animate-in">
           <h2 class="form-title">Qual seu foco atual?</h2>
+          <p class="form-subtitle">Escolha o objetivo que melhor descreve o que você quer alcançar.</p>
           <div class="goal-grid">
-            <article class="selectable-card" :class="{ active: form.objetivo === 'perda' }" @click="form.objetivo = 'perda'">
+            <article
+              v-for="obj in OBJETIVOS"
+              :key="obj.value"
+              class="selectable-card"
+              :class="{ active: form.objetivo === obj.value }"
+              @click="form.objetivo = obj.value"
+            >
               <div class="card-indicator"></div>
-              <h3>Emagrecimento</h3>
-              <p>Redução de gordura corporal com foco em déficit calórico.</p>
+              <h3>{{ obj.label }}</h3>
+              <p>{{ obj.desc }}</p>
             </article>
-            <article class="selectable-card" :class="{ active: form.objetivo === 'ganho' }" @click="form.objetivo = 'ganho'">
-              <div class="card-indicator"></div>
-              <h3>Ganho de Massa</h3>
-              <p>Aumento de volume muscular com superávit nutricional.</p>
-            </article>
-          </div>
-          <div class="field mt-large" v-if="form.objetivo">
-            <label>Qual peso você deseja atingir? (kg)</label>
-            <input type="number" v-model="form.pesoAlvo" class="large-input" />
           </div>
         </div>
 
@@ -237,9 +248,11 @@ const finalizarTriagem = async () => {
           <h2 class="form-title">Saúde e Restrições</h2>
           <div class="field mb-large">
             <label>Preferência de Dieta</label>
-            <div class="segmented-control">
-              <button :class="{ active: form.preferenciaAlimentar === 'ONIVORA' }" @click="form.preferenciaAlimentar = 'ONIVORA'">Onívora</button>
+            <div class="segmented-control segmented-diet">
+              <button :class="{ active: form.preferenciaAlimentar === 'ONIVORA' }"     @click="form.preferenciaAlimentar = 'ONIVORA'">Onívora</button>
               <button :class="{ active: form.preferenciaAlimentar === 'VEGETARIANA' }" @click="form.preferenciaAlimentar = 'VEGETARIANA'">Vegetariana</button>
+              <button :class="{ active: form.preferenciaAlimentar === 'VEGANA' }"      @click="form.preferenciaAlimentar = 'VEGANA'">Vegana</button>
+              <button :class="{ active: form.preferenciaAlimentar === 'PESCATARIANA' }" @click="form.preferenciaAlimentar = 'PESCATARIANA'">Pescatariana</button>
             </div>
           </div>
           
@@ -329,7 +342,7 @@ input, select { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,25
 input:focus { border-color: var(--emerald); outline: none; }
 
 /* GOAL CARDS */
-.goal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.goal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
 .selectable-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 2rem; border-radius: 24px; cursor: pointer; transition: 0.3s; }
 .selectable-card.active { border-color: var(--emerald); background: rgba(16, 185, 129, 0.1); }
 .card-indicator { width: 12px; height: 12px; border: 2px solid var(--text-dim); border-radius: 50%; margin-bottom: 1rem; }
@@ -341,6 +354,9 @@ input:focus { border-color: var(--emerald); outline: none; }
 .segmented-control { display: flex; background: rgba(15, 23, 42, 0.6); padding: 5px; border-radius: 14px; }
 .segmented-control button { flex: 1; background: transparent; border: none; padding: 0.8rem; color: var(--text-dim); font-weight: 700; cursor: pointer; border-radius: 10px; transition: 0.2s; }
 .segmented-control button.active { background: var(--emerald); color: var(--bg-deep); }
+
+.segmented-diet { background: transparent; padding: 0; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.segmented-diet button { flex: 0 0 auto; min-width: 130px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
 
 .chip-container { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); color: var(--text-dim); padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; }
@@ -355,7 +371,8 @@ input:focus { border-color: var(--emerald); outline: none; }
 .mt-large { margin-top: 2rem; }
 .mb-large { margin-bottom: 2rem; }
 
-@media (max-width: 650px) { .input-grid, .goal-grid { grid-template-columns: 1fr; } .form-card { padding: 2rem; } }
+@media (max-width: 650px) { .input-grid, .goal-grid { grid-template-columns: 1fr 1fr; } .form-card { padding: 2rem; } }
+@media (max-width: 420px) { .goal-grid { grid-template-columns: 1fr; } }
 
 /* ANIMATION */
 .animate-in { animation: fadeInSlide 0.4s ease-out forwards; }

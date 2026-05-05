@@ -28,12 +28,6 @@ const router = createRouter({
       meta: { requiresAuth: true, noSidebar: true },
     },
     {
-      path: '/primeiraTriagem',
-      name: 'primeira-triagem',
-      component: () => import('../views/dashboard/PrimeiraTriagemView.vue'),
-      meta: { requiresAuth: true, noSidebar: true },
-    },
-    {
       path: '/perfil',
       name: 'perfil',
       component: () => import('../views/dashboard/PerfilView.vue'),
