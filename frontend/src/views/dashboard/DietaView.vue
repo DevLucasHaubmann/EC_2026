@@ -1,136 +1,177 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { aiService } from '../../services/modules/aiRecommendation';
+import type { Recommendation } from '@/types/api';
 
-// Dados baseados na Tela 05 e RF011/RF012/RF013
-const planoAlimentar = ref({
-  dataGeracao: '03 de Maio de 2026',
-  justificativaIA: {
-    titulo: 'Por que este plano combina com você',
-    pontos: [
-      'Estrutura alimentar com refeições práticas para encaixar em rotina acadêmica e trabalho.',
-      'Priorização de saciedade e controle glicêmico com carboidratos de melhor qualidade.',
-      'Ajustes pensados para prevenção de abandono por baixa praticidade.',
-      'Opções de substituição para preferências e restrições alimentares.'
-    ]
-  },
-  observacoes: [
-    'Objetivo: reduzir gordura corporal com manutenção de energia diária',
-    'Condição observada: tendência a longos períodos sem comer',
-    'Preferência: refeições rápidas e acessíveis'
-  ],
-  refeicoes: [
-    {
-      id: 1,
-      tipo: 'Café da manhã',
-      alimentos: 'Iogurte natural, banana, aveia e chia com opção sem lactose.',
-      macros: { prot: '28g', carb: '44g', gord: '12g' },
-      kcal: 420,
-      tag: 'Adaptado para rotina corrida'
-    },
-    {
-      id: 2,
-      tipo: 'Almoço',
-      alimentos: 'Arroz integral, feijão, frango grelhado e salada fresca.',
-      macros: { prot: '38g', carb: '58g', gord: '18g' },
-      kcal: 610,
-      tag: 'Controle glicêmico'
-    },
-    {
-      id: 3,
-      tipo: 'Lanche',
-      alimentos: 'Sanduíche natural com pasta de ricota e tomate.',
-      macros: { prot: '16g', carb: '22g', gord: '9g' },
-      kcal: 240,
-      tag: 'Prático para faculdade'
-    },
-    {
-      id: 4,
-      tipo: 'Jantar',
-      alimentos: 'Omelete com legumes, batata-doce assada e folhas verdes.',
-      macros: { prot: '34g', carb: '41g', gord: '20g' },
-      kcal: 530,
-      tag: 'Leve e saciante'
-    }
-  ]
-});
+const loading = ref(true);
+const erro = ref<string | null>(null);
+const recomendacao = ref<Recommendation.Response | null>(null);
 
-const trocarRefeicao = (id: number) => {
-  console.log('Solicitando substituição para a refeição:', id);
+const MEAL_LABELS: Record<string, string> = {
+  BREAKFAST:        'Café da manhã',
+  MORNING_SNACK:    'Lanche da manhã',
+  LUNCH:            'Almoço',
+  AFTERNOON_SNACK:  'Lanche da tarde',
+  DINNER:           'Jantar',
+  SUPPER:           'Ceia',
 };
+
+function mealLabel(type: string): string {
+  return MEAL_LABELS[type] ?? type;
+}
+
+function mealAlimentos(meal: Recommendation.MealPlanMeal): string {
+  const opt = meal.options[0];
+  if (!opt || opt.items.length === 0) return '—';
+  return opt.items.map(i => i.displayName || i.name).join(', ');
+}
+
+function mealMacros(meal: Recommendation.MealPlanMeal) {
+  const opt = meal.options[0];
+  if (!opt) return { prot: '—', carb: '—', gord: '—' };
+  return {
+    prot: `${Math.round(opt.totalProtein)}g`,
+    carb: `${Math.round(opt.totalCarbs)}g`,
+    gord: `${Math.round(opt.totalFat)}g`,
+  };
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', {
+    day: '2-digit', month: 'long', year: 'numeric',
+  });
+}
+
+onMounted(async () => {
+  try {
+    recomendacao.value = await aiService.getLatest();
+    if (recomendacao.value?.status === 'GENERATED') {
+      aiService.markAsViewed(recomendacao.value.id).catch(() => {});
+    }
+  } catch (e: any) {
+    const status = e?.response?.status;
+    if (status === 404) {
+      recomendacao.value = null;
+    } else {
+      erro.value = 'Não foi possível carregar sua dieta. Tente novamente.';
+    }
+  } finally {
+    loading.value = false;
+  }
+});
 </script>
 
 <template>
   <div class="dieta-page-wrapper">
-    <main class="dieta-content">
-      <!-- Cabeçalho da Dieta (Tela 05) -->
+
+    <!-- LOADING -->
+    <div v-if="loading" class="state-center">
+      <p class="state-msg">Carregando sua dieta...</p>
+    </div>
+
+    <!-- ERRO -->
+    <div v-else-if="erro" class="state-center">
+      <p class="state-msg state-error">{{ erro }}</p>
+    </div>
+
+    <!-- VAZIO -->
+    <div v-else-if="!recomendacao" class="state-center">
+      <p class="state-msg">Nenhuma recomendação encontrada.</p>
+      <p class="state-sub">Complete a triagem para gerar seu plano alimentar personalizado.</p>
+    </div>
+
+    <!-- CONTEÚDO REAL -->
+    <main v-else class="dieta-content">
+
+      <!-- Cabeçalho -->
       <header class="dieta-intro">
-        <span class="gen-date">Plano gerado em: {{ planoAlimentar.dataGeracao }}</span>
-        <h1>Plano alimentar completo com justificativa da IA</h1>
-        <p class="intro-desc">
-          Realize a personalização da sua dieta e confira o porquê de cada bloco alimentar, 
-          mostrando calorias, macros e adaptações possíveis.
-        </p>
+        <span class="gen-date">Plano gerado em: {{ formatDate(recomendacao.createdAt) }}</span>
+        <h1>Seu plano alimentar personalizado</h1>
+        <p class="intro-desc">{{ recomendacao.summary }}</p>
       </header>
 
+      <!-- Alertas -->
+      <section v-if="recomendacao.alerts.length" class="alerts-section">
+        <div v-for="(alert, i) in recomendacao.alerts" :key="i" class="alert-item">
+          <span class="alert-dot"></span>
+          <p>{{ alert }}</p>
+        </div>
+      </section>
+
+      <!-- Meta calórica diária -->
+      <div class="daily-target">
+        <span class="daily-label">Meta calórica diária</span>
+        <span class="daily-value">{{ recomendacao.plan.dailyCalorieTarget }} kcal</span>
+      </div>
+
       <div class="dieta-grid-layout">
-        
-        <!-- Coluna da Esquerda: Lista de Refeições -->
+
+        <!-- Coluna Esquerda: Refeições -->
         <section class="meals-column">
-          <article v-for="refeicao in planoAlimentar.refeicoes" :key="refeicao.id" class="meal-card-item">
+          <article
+            v-for="meal in recomendacao.plan.meals"
+            :key="meal.mealType"
+            class="meal-card-item"
+          >
             <div class="meal-card-header">
               <div class="meal-title-group">
-                <span class="meal-type">{{ refeicao.tipo }}</span>
-                <span class="meal-kcal">{{ refeicao.kcal }} kcal</span>
+                <span class="meal-type">{{ mealLabel(meal.mealType) }}</span>
+                <span class="meal-kcal">{{ meal.calorieTarget }} kcal</span>
               </div>
-              <button class="btn-swap-meal" @click="trocarRefeicao(refeicao.id)">
-                Trocar refeição
-              </button>
             </div>
 
-            <p class="meal-description">{{ refeicao.alimentos }}</p>
-            
+            <p class="meal-description">{{ mealAlimentos(meal) }}</p>
+
             <div class="meal-footer">
               <div class="macros-display">
-                <span>{{ refeicao.macros.prot }} prot</span>
-                <span>{{ refeicao.macros.carb }} carb</span>
-                <span>{{ refeicao.macros.gord }} gord</span>
+                <span>{{ mealMacros(meal).prot }} prot</span>
+                <span>{{ mealMacros(meal).carb }} carb</span>
+                <span>{{ mealMacros(meal).gord }} gord</span>
               </div>
-              <span class="meal-context-tag">{{ refeicao.tag }}</span>
+              <span
+                v-if="recomendacao.mealExplanations[meal.mealType]"
+                class="meal-context-tag"
+              >
+                {{ recomendacao.mealExplanations[meal.mealType] }}
+              </span>
             </div>
           </article>
         </section>
 
-        <!-- Coluna da Direita: Justificativa e Observações (Sidebar da Tela 05) -->
+        <!-- Coluna Direita: Dicas e Alertas -->
         <aside class="ai-justification-column">
-          
-          <!-- Card de Recomendação Inteligente -->
-          <section class="ai-strategy-card">
+
+          <!-- Dicas da IA -->
+          <section v-if="recomendacao.tips.length" class="ai-strategy-card">
             <div class="card-header">
-              <h3>Recomendação inteligente</h3>
+              <h3>Dicas personalizadas</h3>
             </div>
             <div class="strategy-content">
-              <h4>{{ planoAlimentar.justificativaIA.titulo }}</h4>
               <ul>
-                <li v-for="(ponto, i) in planoAlimentar.justificativaIA.pontos" :key="i">
-                  {{ ponto }}
-                </li>
+                <li v-for="(tip, i) in recomendacao.tips" :key="i">{{ tip }}</li>
               </ul>
             </div>
           </section>
 
-          <!-- Card de Observações do Perfil -->
-          <section class="profile-notes-card">
-            <h3>Observações do perfil</h3>
+          <!-- Explicações por refeição -->
+          <section
+            v-if="Object.keys(recomendacao.mealExplanations).length"
+            class="profile-notes-card"
+          >
+            <h3>Justificativa por refeição</h3>
             <div class="notes-list">
-              <div v-for="(obs, i) in planoAlimentar.observacoes" :key="i" class="note-item">
+              <div
+                v-for="(explanation, type) in recomendacao.mealExplanations"
+                :key="type"
+                class="note-item"
+              >
                 <span class="note-dot"></span>
-                <p>{{ obs }}</p>
+                <p><strong>{{ mealLabel(String(type)) }}:</strong> {{ explanation }}</p>
               </div>
             </div>
           </section>
 
         </aside>
-
       </div>
     </main>
   </div>
@@ -149,13 +190,56 @@ const trocarRefeicao = (id: number) => {
   font-family: 'Inter', sans-serif;
 }
 
+/* ESTADOS */
+.state-center {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+}
+.state-msg { color: var(--text-muted); font-size: 1.1rem; font-weight: 600; margin: 0; }
+.state-sub { color: var(--text-muted); font-size: 0.9rem; margin: 0; }
+.state-error { color: #f87171; }
+
 /* CONTEÚDO */
 .dieta-content { max-width: 1200px; margin: 0 auto; padding: 4rem 1.5rem; }
 
-.dieta-intro { margin-bottom: 4rem; }
+.dieta-intro { margin-bottom: 2.5rem; }
 .gen-date { color: var(--accent); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; }
 .dieta-intro h1 { font-size: 2.5rem; font-weight: 900; margin: 0.8rem 0; letter-spacing: -1px; line-height: 1.1; }
 .intro-desc { color: var(--text-muted); font-size: 1.1rem; max-width: 800px; }
+
+/* ALERTAS */
+.alerts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  background: rgba(248, 113, 113, 0.05);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+}
+.alert-item { display: flex; gap: 10px; align-items: flex-start; }
+.alert-dot { width: 6px; height: 6px; background: #f87171; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
+.alert-item p { font-size: 0.9rem; color: #fca5a5; margin: 0; line-height: 1.5; }
+
+/* META CALÓRICA */
+.daily-target {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 14px;
+  padding: 1rem 1.5rem;
+}
+.daily-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.daily-value { font-size: 1.3rem; font-weight: 900; color: var(--accent); }
 
 /* GRID LAYOUT */
 .dieta-grid-layout { display: grid; grid-template-columns: 1fr 380px; gap: 3rem; }
@@ -166,25 +250,16 @@ const trocarRefeicao = (id: number) => {
   background: var(--bg-card); padding: 2rem; border-radius: 24px;
   border: 1px solid rgba(255,255,255,0.03);
 }
-
 .meal-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .meal-type { font-size: 1.25rem; font-weight: 800; display: block; }
 .meal-kcal { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 8px; margin-top: 4px; display: inline-block; }
-
-.btn-swap-meal {
-  background: transparent; border: 1px solid rgba(255,255,255,0.1); color: white;
-  padding: 0.6rem 1rem; border-radius: 10px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: 0.3s;
-}
-.btn-swap-meal:hover { border-color: var(--accent); color: var(--accent); }
-
-.meal-description { font-size: 1.1rem; line-height: 1.6; color: #cbd5e1; margin-bottom: 2rem; }
-
-.meal-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem; }
+.meal-description { font-size: 1rem; line-height: 1.6; color: #cbd5e1; margin-bottom: 2rem; }
+.meal-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem; flex-wrap: wrap; gap: 0.75rem; }
 .macros-display { display: flex; gap: 1.2rem; }
 .macros-display span { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
-.meal-context-tag { font-size: 0.75rem; font-weight: 700; color: var(--accent); background: rgba(16, 185, 129, 0.1); padding: 5px 12px; border-radius: 20px; }
+.meal-context-tag { font-size: 0.75rem; font-weight: 700; color: var(--accent); background: rgba(16, 185, 129, 0.1); padding: 5px 12px; border-radius: 20px; max-width: 260px; text-align: right; }
 
-/* SIDEBAR IA (Tela 05) */
+/* SIDEBAR IA */
 .ai-justification-column { display: flex; flex-direction: column; gap: 2rem; }
 
 .ai-strategy-card {
@@ -192,11 +267,9 @@ const trocarRefeicao = (id: number) => {
   padding: 2rem; border-radius: 24px; border: 1px solid rgba(16, 185, 129, 0.2);
 }
 .ai-strategy-card .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
-.ia-icon { font-size: 1.5rem; }
 .ai-strategy-card h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); font-weight: 800; }
 
-.strategy-content h4 { font-size: 1.1rem; font-weight: 800; margin-bottom: 1.5rem; line-height: 1.4; }
-.strategy-content ul { list-style: none; display: flex; flex-direction: column; gap: 1.2rem; }
+.strategy-content ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1.2rem; }
 .strategy-content li { font-size: 0.9rem; color: #cbd5e1; line-height: 1.5; padding-left: 1.2rem; position: relative; }
 .strategy-content li::before { content: "•"; position: absolute; left: 0; color: var(--accent); font-weight: bold; }
 
@@ -205,8 +278,9 @@ const trocarRefeicao = (id: number) => {
 
 .notes-list { display: flex; flex-direction: column; gap: 1.2rem; }
 .note-item { display: flex; gap: 10px; align-items: flex-start; }
-.note-dot { width: 6px; height: 6px; background: var(--text-muted); border-radius: 50%; margin-top: 6px; }
-.note-item p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; }
+.note-dot { width: 6px; height: 6px; background: var(--text-muted); border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+.note-item p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin: 0; }
+.note-item strong { color: #cbd5e1; }
 
 @media (max-width: 1024px) {
   .dieta-grid-layout { grid-template-columns: 1fr; }
