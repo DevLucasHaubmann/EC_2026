@@ -221,7 +221,8 @@ public class MealPlanEngine {
                 assessment.getGoal().name(),
                 normalizeList(assessment.getDietaryRestrictions()),
                 normalizeList(assessment.getAllergies()),
-                normalizeList(assessment.getHealthConditions())
+                normalizeList(assessment.getHealthConditions()),
+                assessment.getMealsPerDay()
         );
     }
 

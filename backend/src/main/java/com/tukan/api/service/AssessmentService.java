@@ -43,7 +43,8 @@ public class AssessmentService {
     @Transactional
     public Assessment updateOwn(String authenticatedEmail, UpdateAssessmentRequest request) {
         if (request.goal() == null && request.dietaryRestrictions() == null
-                && request.allergies() == null && request.healthConditions() == null) {
+                && request.allergies() == null && request.healthConditions() == null
+                && request.mealsPerDay() == null && request.targetWeightKg() == null) {
             throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
         }
 
@@ -62,6 +63,9 @@ public class AssessmentService {
         if (request.healthConditions() != null) {
             assessment.setHealthConditions(request.healthConditions());
         }
+        // mealsPerDay e targetWeightKg são sempre aplicados (inclusive null para limpeza)
+        assessment.setMealsPerDay(request.mealsPerDay());
+        assessment.setTargetWeightKg(request.targetWeightKg());
 
         return assessmentRepository.save(assessment);
     }
@@ -93,7 +97,8 @@ public class AssessmentService {
     @Transactional
     public Assessment update(Integer id, AdminUpdateAssessmentRequest request) {
         if (request.goal() == null && request.dietaryRestrictions() == null
-                && request.allergies() == null && request.healthConditions() == null) {
+                && request.allergies() == null && request.healthConditions() == null
+                && request.mealsPerDay() == null && request.targetWeightKg() == null) {
             throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
         }
 
@@ -111,6 +116,9 @@ public class AssessmentService {
         if (request.healthConditions() != null) {
             assessment.setHealthConditions(request.healthConditions());
         }
+        // mealsPerDay e targetWeightKg são sempre aplicados (inclusive null para limpeza)
+        assessment.setMealsPerDay(request.mealsPerDay());
+        assessment.setTargetWeightKg(request.targetWeightKg());
 
         return assessmentRepository.save(assessment);
     }
@@ -131,11 +139,13 @@ public class AssessmentService {
         assessment.setDietaryRestrictions(request.dietaryRestrictions());
         assessment.setAllergies(request.allergies());
         assessment.setHealthConditions(request.healthConditions());
+        assessment.setMealsPerDay(request.mealsPerDay());
+        assessment.setTargetWeightKg(request.targetWeightKg());
 
         return assessmentRepository.save(assessment);
     }
 
-    private Assessment findByUserId(Integer userId) {
+    public Assessment findByUserId(Integer userId) {
         return assessmentRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException("Triagem não encontrada.", HttpStatus.NOT_FOUND));
     }

@@ -32,10 +32,16 @@ public class MealPlanPromptBuilder {
 
             Seu papel é:
             - Apresentar o plano de forma clara e organizada para o usuário.
-            - Escrever um resumo curto sobre o plano e o perfil do usuário.
+            - Escrever um resumo CURTO sobre o plano e o perfil do usuário.
             - Para cada refeição, explicar brevemente por que aqueles alimentos foram escolhidos.
             - Gerar dicas práticas de preparo ou consumo quando pertinente.
             - Gerar alertas relevantes baseados nas condições de saúde, alergias ou restrições.
+
+            Regras de tamanho — OBRIGATÓRIAS:
+            - summary: máximo 2 frases. Direto ao ponto. Ex.: "Plano de 1800 kcal focado em perda de peso com equilíbrio proteico. As refeições priorizam saciedade e controle glicêmico."
+            - mealExplanations: exatamente 1 frase por refeição, máximo 20 palavras. Ex.: "Proteína magra e carboidrato complexo garantem energia sustentada até o almoço."
+            - tips: máximo 4 dicas. Cada dica: máximo 15 palavras. Diretas e acionáveis. Se não houver dicas relevantes, retorne lista vazia.
+            - alerts: somente alertas realmente importantes para saúde ou restrições do usuário. Se não houver, retorne lista vazia [].
 
             Formato de resposta:
             - Responda obrigatoriamente em JSON válido.

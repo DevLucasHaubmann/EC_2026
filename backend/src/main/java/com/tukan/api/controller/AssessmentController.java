@@ -70,6 +70,12 @@ public class AssessmentController {
         return ResponseEntity.ok(AssessmentResponse.from(assessmentService.findById(id)));
     }
 
+    @GetMapping("/users/{userId}")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<AssessmentResponse> findByUserId(@PathVariable Integer userId) {
+        return ResponseEntity.ok(AssessmentResponse.from(assessmentService.findByUserId(userId)));
+    }
+
     @PostMapping("/users/{userId}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<AssessmentResponse> createForUser(

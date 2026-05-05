@@ -18,6 +18,8 @@ export interface RefreshRequest {
   refreshToken: string
 }
 
+export type UserType = 'ADMIN' | 'USER'
+
 export interface AuthResponse {
   accessToken: string
   refreshToken: string
@@ -26,4 +28,5 @@ export interface AuthResponse {
   message: string
   onboardingRequired: boolean
   nextStep: string
+  userType: UserType
 }

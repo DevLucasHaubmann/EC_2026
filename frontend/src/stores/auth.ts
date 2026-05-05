@@ -6,43 +6,50 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authService } from '../services/modules/auth'
-import type { LoginRequest, RegisterRequest } from '@/types/auth'
+import type { LoginRequest, RegisterRequest, UserType } from '@/types/auth'
 
 const ACCESS_TOKEN_KEY = 'tukan_access_token'
 const REFRESH_TOKEN_KEY = 'tukan_refresh_token'
+const USER_TYPE_KEY = 'tukan_user_type'
 
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(null)
   const refreshToken = ref<string | null>(null)
+  const userType = ref<UserType | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
   const isAuthenticated = computed(() => !!accessToken.value)
+  const isAdmin = computed(() => userType.value === 'ADMIN')
 
-  // Called once on app startup to rehydrate and validate the stored session
   async function restoreSession(): Promise<void> {
     const storedAccess = localStorage.getItem(ACCESS_TOKEN_KEY)
     const storedRefresh = localStorage.getItem(REFRESH_TOKEN_KEY)
+    const storedType = localStorage.getItem(USER_TYPE_KEY) as UserType | null
 
     if (!storedAccess || !storedRefresh) return
 
-    // Optimistically rehydrate — the router guard and interceptor handle expired tokens
     accessToken.value = storedAccess
     refreshToken.value = storedRefresh
+    userType.value = storedType
   }
 
-  function persistTokens(access: string, refresh: string) {
+  function persistTokens(access: string, refresh: string, type: UserType) {
     accessToken.value = access
     refreshToken.value = refresh
+    userType.value = type
     localStorage.setItem(ACCESS_TOKEN_KEY, access)
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh)
+    localStorage.setItem(USER_TYPE_KEY, type)
   }
 
   function clearSession() {
     accessToken.value = null
     refreshToken.value = null
+    userType.value = null
     localStorage.removeItem(ACCESS_TOKEN_KEY)
     localStorage.removeItem(REFRESH_TOKEN_KEY)
+    localStorage.removeItem(USER_TYPE_KEY)
   }
 
   function clearError() {
@@ -54,7 +61,7 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     try {
       const data = await authService.login(payload)
-      persistTokens(data.accessToken, data.refreshToken)
+      persistTokens(data.accessToken, data.refreshToken, data.userType)
       return data.nextStep
     } catch (err: any) {
       error.value = resolveErrorMessage(err)
@@ -69,7 +76,7 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     try {
       const data = await authService.register(payload)
-      persistTokens(data.accessToken, data.refreshToken)
+      persistTokens(data.accessToken, data.refreshToken, data.userType)
       return data.nextStep
     } catch (err: any) {
       error.value = resolveErrorMessage(err)
@@ -93,7 +100,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (!token) return false
     try {
       const data = await authService.refresh({ refreshToken: token })
-      persistTokens(data.accessToken, data.refreshToken)
+      persistTokens(data.accessToken, data.refreshToken, data.userType)
       return true
     } catch {
       clearSession()
@@ -103,11 +110,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     accessToken,
+    userType,
     loading,
     error,
     isAuthenticated,
+    isAdmin,
     restoreSession,
     clearError,
+    clearSession,
     login,
     register,
     logout,

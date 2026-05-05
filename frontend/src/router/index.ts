@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
@@ -8,7 +7,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView,
+      component: () => import('../views/LandingPage.vue'),
     },
     {
       path: '/auth',
@@ -22,14 +21,71 @@ const router = createRouter({
       component: () => import('../views/dashboard/DashboardView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/triagem',
+      name: 'triagem',
+      component: () => import('../views/dashboard/TriagemView.vue'),
+      meta: { requiresAuth: true, noSidebar: true },
+    },
+    {
+      path: '/perfil',
+      name: 'perfil',
+      component: () => import('../views/dashboard/PerfilView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/perfil/editar',
+      name: 'editar-perfil',
+      component: () => import('../views/dashboard/EditarPerfilView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/evolucao',
+      name: 'evolucao',
+      component: () => import('../views/dashboard/EvolucaoView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/dieta',
+      name: 'dieta',
+      component: () => import('../views/dashboard/DietaView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/efetivarRefeicao',
+      name: 'dieta-diaria',
+      component: () => import('../views/dashboard/DietaDiariaView.vue'),
+      meta: { requiresAuth: true },
+    },
+
+    // ----- ADMIN
+    {
+      path: '/admin/dashboard',
+      name: 'admin-dashboard',
+      component: () => import('../views/admin/DashboardView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+
+    // ----- 404
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('../views/NotFoundView.vue'),
+    },
   ],
 })
 
+// Proteção de rotas
 router.beforeEach((to) => {
   const authStore = useAuthStore()
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'auth' }
+  }
+
+  if (to.meta.requiresAdmin) {
+    if (!authStore.isAuthenticated) return { name: 'auth' }
+    if (!authStore.isAdmin) return { name: 'dashboard' }
   }
 
   if (to.meta.guestOnly && authStore.isAuthenticated) {

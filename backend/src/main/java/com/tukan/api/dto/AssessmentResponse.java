@@ -26,6 +26,12 @@ public record AssessmentResponse(
         @JsonProperty("healthConditions")
         String healthConditions,
 
+        @JsonProperty("mealsPerDay")
+        Integer mealsPerDay,
+
+        @JsonProperty("targetWeightKg")
+        Double targetWeightKg,
+
         @JsonProperty("createdAt")
         Instant createdAt,
 
@@ -42,6 +48,8 @@ public record AssessmentResponse(
                 assessment.getDietaryRestrictions(),
                 assessment.getAllergies(),
                 assessment.getHealthConditions(),
+                assessment.getMealsPerDay(),
+                assessment.getTargetWeightKg(),
                 assessment.getCreatedAt(),
                 assessment.getUpdatedAt()
         );

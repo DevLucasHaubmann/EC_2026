@@ -4,7 +4,7 @@
     <input 
       :type="type"
       :value="modelValue"
-      @input="$emit('update:modelValue', $event.target.value)"
+      @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       class="custom-input"
       v-bind="$attrs"
     />

@@ -1,4 +1,6 @@
 import axios from 'axios'
+import router from '@/router'
+import { useAuthStore } from '@/stores/auth'
 
 export const api = axios.create({
   baseURL: '/api',
@@ -22,9 +24,9 @@ api.interceptors.response.use(
     const original = error.config
 
     const isAuthEndpoint = /\/auth\//.test(original?.url ?? '')
-    const is401 = error.response?.status === 401
+    const isUnauthorized = error.response?.status === 401
 
-    if (!is401 || original._retry || isAuthEndpoint) {
+    if (!isUnauthorized || original._retry || isAuthEndpoint) {
       return Promise.reject(error)
     }
 
@@ -45,8 +47,7 @@ api.interceptors.response.use(
           localStorage.setItem('tukan_refresh_token', data.refreshToken)
         })
         .catch(() => {
-          localStorage.removeItem('tukan_access_token')
-          localStorage.removeItem('tukan_refresh_token')
+          // Se falhar o refresh (ex: token de refresh venceu no back), tomba a sessão inteira
           redirectToAuth()
         })
         .finally(() => {
@@ -67,8 +68,15 @@ api.interceptors.response.use(
 )
 
 function redirectToAuth() {
-  // Evita redirect duplicado se já estiver na página de auth
+  try {
+    const authStore = useAuthStore()
+    authStore.clearSession()
+  } catch {
+    localStorage.removeItem('tukan_access_token')
+    localStorage.removeItem('tukan_refresh_token')
+  }
+
   if (!window.location.pathname.startsWith('/auth')) {
-    window.location.href = '/auth'
+    router.push({ name: 'auth' })
   }
 }

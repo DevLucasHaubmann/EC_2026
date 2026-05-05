@@ -7,6 +7,7 @@ public record AuthResponse(
         long expiresIn,
         String message,
         boolean onboardingRequired,
-        String nextStep
+        String nextStep,
+        String userType
 ) {
 }
