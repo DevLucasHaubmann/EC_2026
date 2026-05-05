@@ -6,6 +6,7 @@ import type { Recommendation } from '@/types/api';
 const loading = ref(true);
 const erro = ref<string | null>(null);
 const recomendacao = ref<Recommendation.Response | null>(null);
+const summaryExpanded = ref(false);
 
 const MEAL_LABELS: Record<string, string> = {
   BREAKFAST:        'Café da manhã',
@@ -40,6 +41,10 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', {
     day: '2-digit', month: 'long', year: 'numeric',
   });
+}
+
+function summaryText(rec: Recommendation.Response): string {
+  return rec.summary?.trim() || 'Plano alimentar personalizado gerado com base no seu perfil.';
 }
 
 onMounted(async () => {
@@ -87,11 +92,22 @@ onMounted(async () => {
       <header class="dieta-intro">
         <span class="gen-date">Plano gerado em: {{ formatDate(recomendacao.createdAt) }}</span>
         <h1>Seu plano alimentar personalizado</h1>
-        <p class="intro-desc">{{ recomendacao.summary }}</p>
+        <div class="summary-block">
+          <p class="intro-desc" :class="{ clamped: !summaryExpanded }">
+            {{ summaryText(recomendacao) }}
+          </p>
+          <button
+            v-if="summaryText(recomendacao).length > 120"
+            class="summary-toggle"
+            @click="summaryExpanded = !summaryExpanded"
+          >
+            {{ summaryExpanded ? 'Ver menos' : 'Ver mais' }}
+          </button>
+        </div>
       </header>
 
       <!-- Alertas -->
-      <section v-if="recomendacao.alerts.length" class="alerts-section">
+      <section v-if="(recomendacao.alerts ?? []).length" class="alerts-section">
         <div v-for="(alert, i) in recomendacao.alerts" :key="i" class="alert-item">
           <span class="alert-dot"></span>
           <p>{{ alert }}</p>
@@ -128,34 +144,28 @@ onMounted(async () => {
                 <span>{{ mealMacros(meal).carb }} carb</span>
                 <span>{{ mealMacros(meal).gord }} gord</span>
               </div>
-              <span
-                v-if="recomendacao.mealExplanations[meal.mealType]"
-                class="meal-context-tag"
-              >
-                {{ recomendacao.mealExplanations[meal.mealType] }}
-              </span>
             </div>
           </article>
         </section>
 
-        <!-- Coluna Direita: Dicas e Alertas -->
+        <!-- Coluna Direita: Dicas e Justificativas -->
         <aside class="ai-justification-column">
 
           <!-- Dicas da IA -->
-          <section v-if="recomendacao.tips.length" class="ai-strategy-card">
+          <section v-if="(recomendacao.tips ?? []).length" class="ai-strategy-card">
             <div class="card-header">
               <h3>Dicas personalizadas</h3>
             </div>
             <div class="strategy-content">
               <ul>
-                <li v-for="(tip, i) in recomendacao.tips" :key="i">{{ tip }}</li>
+                <li v-for="(tip, i) in recomendacao.tips" :key="i" class="tip-item">{{ tip }}</li>
               </ul>
             </div>
           </section>
 
           <!-- Explicações por refeição -->
           <section
-            v-if="Object.keys(recomendacao.mealExplanations).length"
+            v-if="Object.keys(recomendacao.mealExplanations ?? {}).length"
             class="profile-notes-card"
           >
             <h3>Justificativa por refeição</h3>
@@ -209,8 +219,35 @@ onMounted(async () => {
 
 .dieta-intro { margin-bottom: 2.5rem; }
 .gen-date { color: var(--accent); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; }
-.dieta-intro h1 { font-size: 2.5rem; font-weight: 900; margin: 0.8rem 0; letter-spacing: -1px; line-height: 1.1; }
-.intro-desc { color: var(--text-muted); font-size: 1.1rem; max-width: 800px; }
+.dieta-intro h1 { font-size: 2.5rem; font-weight: 900; margin: 0.8rem 0 0.5rem; letter-spacing: -1px; line-height: 1.1; }
+
+/* SUMMARY */
+.summary-block { display: flex; flex-direction: column; align-items: flex-start; gap: 0.4rem; }
+.intro-desc {
+  color: var(--text-muted);
+  font-size: 1rem;
+  max-width: 720px;
+  line-height: 1.6;
+  margin: 0;
+}
+.intro-desc.clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.summary-toggle {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.summary-toggle:hover { opacity: 0.8; }
 
 /* ALERTAS */
 .alerts-section {
@@ -242,44 +279,64 @@ onMounted(async () => {
 .daily-value { font-size: 1.3rem; font-weight: 900; color: var(--accent); }
 
 /* GRID LAYOUT */
-.dieta-grid-layout { display: grid; grid-template-columns: 1fr 380px; gap: 3rem; }
+.dieta-grid-layout { display: grid; grid-template-columns: 1fr 360px; gap: 3rem; }
 
 /* CARDS DE REFEIÇÃO */
-.meals-column { display: flex; flex-direction: column; gap: 1.5rem; }
+.meals-column { display: flex; flex-direction: column; gap: 1.25rem; }
 .meal-card-item {
-  background: var(--bg-card); padding: 2rem; border-radius: 24px;
+  background: var(--bg-card);
+  padding: 1.5rem 2rem;
+  border-radius: 20px;
   border: 1px solid rgba(255,255,255,0.03);
 }
-.meal-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-.meal-type { font-size: 1.25rem; font-weight: 800; display: block; }
-.meal-kcal { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 8px; margin-top: 4px; display: inline-block; }
-.meal-description { font-size: 1rem; line-height: 1.6; color: #cbd5e1; margin-bottom: 2rem; }
-.meal-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem; flex-wrap: wrap; gap: 0.75rem; }
+.meal-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+.meal-type { font-size: 1.1rem; font-weight: 800; display: block; }
+.meal-kcal { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; background: rgba(255,255,255,0.05); padding: 3px 9px; border-radius: 8px; margin-top: 3px; display: inline-block; }
+.meal-description { font-size: 0.95rem; line-height: 1.5; color: #cbd5e1; margin-bottom: 1.25rem; }
+.meal-footer { display: flex; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem; }
 .macros-display { display: flex; gap: 1.2rem; }
 .macros-display span { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
-.meal-context-tag { font-size: 0.75rem; font-weight: 700; color: var(--accent); background: rgba(16, 185, 129, 0.1); padding: 5px 12px; border-radius: 20px; max-width: 260px; text-align: right; }
 
 /* SIDEBAR IA */
-.ai-justification-column { display: flex; flex-direction: column; gap: 2rem; }
+.ai-justification-column { display: flex; flex-direction: column; gap: 1.5rem; }
 
 .ai-strategy-card {
   background: linear-gradient(145deg, #1e293b 0%, #161e2b 100%);
-  padding: 2rem; border-radius: 24px; border: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 1.5rem; border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.2);
 }
-.ai-strategy-card .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
-.ai-strategy-card h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); font-weight: 800; }
+.ai-strategy-card .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; }
+.ai-strategy-card h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); font-weight: 800; margin: 0; }
 
-.strategy-content ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1.2rem; }
-.strategy-content li { font-size: 0.9rem; color: #cbd5e1; line-height: 1.5; padding-left: 1.2rem; position: relative; }
-.strategy-content li::before { content: "•"; position: absolute; left: 0; color: var(--accent); font-weight: bold; }
+.strategy-content ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.9rem; }
+.tip-item {
+  font-size: 0.875rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+  padding-left: 1.2rem;
+  position: relative;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tip-item::before { content: "•"; position: absolute; left: 0; color: var(--accent); font-weight: bold; }
 
-.profile-notes-card { background: rgba(255,255,255,0.02); padding: 2rem; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
-.profile-notes-card h3 { font-size: 0.9rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--text-muted); text-transform: uppercase; }
+.profile-notes-card { background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); }
+.profile-notes-card h3 { font-size: 0.8rem; font-weight: 800; margin: 0 0 1.25rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
 
-.notes-list { display: flex; flex-direction: column; gap: 1.2rem; }
+.notes-list { display: flex; flex-direction: column; gap: 1rem; }
 .note-item { display: flex; gap: 10px; align-items: flex-start; }
 .note-dot { width: 6px; height: 6px; background: var(--text-muted); border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
-.note-item p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin: 0; }
+.note-item p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .note-item strong { color: #cbd5e1; }
 
 @media (max-width: 1024px) {

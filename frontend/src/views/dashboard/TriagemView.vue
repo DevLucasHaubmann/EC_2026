@@ -349,8 +349,8 @@ input, select { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,25
 input:focus { border-color: var(--emerald); outline: none; }
 
 /* GOAL CARDS */
-.goal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
-.selectable-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 2rem; border-radius: 24px; cursor: pointer; transition: 0.3s; }
+.goal-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.1rem; width: 100%; max-width: 760px; margin: 0 auto; }
+.selectable-card { flex: 0 1 220px; min-width: 200px; max-width: 230px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 2rem; border-radius: 24px; cursor: pointer; transition: 0.3s; text-align: left; align-items: flex-start; }
 .selectable-card.active { border-color: var(--emerald); background: rgba(16, 185, 129, 0.1); }
 .card-indicator { width: 12px; height: 12px; border: 2px solid var(--text-dim); border-radius: 50%; margin-bottom: 1rem; }
 .selectable-card.active .card-indicator { background: var(--emerald); border-color: var(--emerald); box-shadow: 0 0 10px var(--emerald); }
@@ -379,8 +379,8 @@ input:focus { border-color: var(--emerald); outline: none; }
 .mb-large { margin-bottom: 2rem; }
 .label-optional { font-size: 0.8rem; color: var(--text-dim); font-weight: 400; text-transform: none; letter-spacing: 0; }
 
-@media (max-width: 650px) { .input-grid, .goal-grid { grid-template-columns: 1fr 1fr; } .form-card { padding: 2rem; } }
-@media (max-width: 420px) { .goal-grid { grid-template-columns: 1fr; } }
+@media (max-width: 650px) { .input-grid { grid-template-columns: 1fr 1fr; } .form-card { padding: 2rem; } .selectable-card { flex: 0 1 calc(50% - 0.6rem); min-width: 0; max-width: none; } }
+@media (max-width: 420px) { .selectable-card { flex: 0 1 100%; max-width: none; } }
 
 /* ANIMATION */
 .animate-in { animation: fadeInSlide 0.4s ease-out forwards; }
