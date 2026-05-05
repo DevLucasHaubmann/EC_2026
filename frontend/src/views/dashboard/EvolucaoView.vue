@@ -26,8 +26,8 @@ const aderenciaSemanal = ref([
   { dia: 'Dom', pct: 88 },
 ]);
 
-const pesoInicial = historicoPeso.value[0].peso;
-const pesoAtual = historicoPeso.value[historicoPeso.value.length - 1].peso;
+const pesoInicial = historicoPeso.value[0]!.peso;
+const pesoAtual = historicoPeso.value[historicoPeso.value.length - 1]!.peso;
 const diferencaPeso = (pesoAtual - pesoInicial).toFixed(1);
 const novoPeso = ref(null);
 
