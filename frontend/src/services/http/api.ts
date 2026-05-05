@@ -45,6 +45,13 @@ api.interceptors.response.use(
         .then(({ data }) => {
           localStorage.setItem('tukan_access_token', data.accessToken)
           localStorage.setItem('tukan_refresh_token', data.refreshToken)
+          if (data.userType) {
+            localStorage.setItem('tukan_user_type', data.userType)
+            try {
+              const authStore = useAuthStore()
+              authStore.restoreSession()
+            } catch {}
+          }
         })
         .catch(() => {
           // Se falhar o refresh (ex: token de refresh venceu no back), tomba a sessão inteira

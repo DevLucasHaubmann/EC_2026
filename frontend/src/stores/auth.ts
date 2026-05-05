@@ -31,16 +31,20 @@ export const useAuthStore = defineStore('auth', () => {
 
     accessToken.value = storedAccess
     refreshToken.value = storedRefresh
-    userType.value = storedType
+    userType.value = (storedType && storedType !== 'undefined' && storedType !== 'null') ? storedType : null
   }
 
   function persistTokens(access: string, refresh: string, type: UserType) {
     accessToken.value = access
     refreshToken.value = refresh
-    userType.value = type
+    userType.value = type ?? null
     localStorage.setItem(ACCESS_TOKEN_KEY, access)
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh)
-    localStorage.setItem(USER_TYPE_KEY, type)
+    if (type) {
+      localStorage.setItem(USER_TYPE_KEY, type)
+    } else {
+      localStorage.removeItem(USER_TYPE_KEY)
+    }
   }
 
   function clearSession() {
