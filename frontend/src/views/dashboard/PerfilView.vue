@@ -1,41 +1,82 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from "../../stores/auth";
+import { useAuthStore } from '../../stores/auth';
+import { meService } from '../../services/modules/me';
 
 const router = useRouter();
 const authStore = useAuthStore();
 
-const usuario = {
-  nome: 'Lula Inácio da Silva',
-  email: 'lula@pucpr.edu.br',
-  
-  biometria: {
-    pesoAtual: '78',
-    altura: '182',
-    idade: '26',
-    sexo: 'Masculino'
-  },
-  metas: {
-    objetivo: 'Ganho de Massa',
-    pesoAlvo: '85',
-    prazo: '12 semanas'
-  },
-  preferencias: {
-    refeicoesDiarias: '4',
-    tipoDieta: 'Onívora',
-    condicoesSaude: 'Nenhuma',
-    alergias: 'Lactose'
+const loading = ref(true);
+const erro = ref<string | null>(null);
+
+const nome = ref('—')
+const email = ref('—')
+const pesoAtual = ref<string>('—')
+const altura = ref<string>('—')
+const idade = ref<string>('—')
+const sexo = ref<string>('—')
+const objetivo = ref<string>('—')
+const tipoDieta = ref<string>('—')
+const condicoesSaude = ref<string>('—')
+const alergias = ref<string>('—')
+
+const GOAL_LABELS: Record<string, string> = {
+  WEIGHT_LOSS: 'Perda de peso',
+  MUSCLE_GAIN: 'Ganho de massa',
+  MAINTENANCE: 'Manutenção',
+  DIETARY_REEDUCATION: 'Reeducação alimentar',
+  SPORTS_PERFORMANCE: 'Performance esportiva',
+}
+
+const GENDER_LABELS: Record<string, string> = {
+  MALE: 'Masculino',
+  FEMALE: 'Feminino',
+}
+
+function calcularIdade(dateOfBirth: string): number {
+  const nasc = new Date(dateOfBirth)
+  const hoje = new Date()
+  let anos = hoje.getFullYear() - nasc.getFullYear()
+  const m = hoje.getMonth() - nasc.getMonth()
+  if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) anos--
+  return anos
+}
+
+onMounted(async () => {
+  try {
+    const me = await meService.getMe()
+
+    nome.value = me.name ?? '—'
+    email.value = me.email ?? '—'
+
+    if (me.profile) {
+      pesoAtual.value = me.profile.weightKg != null ? `${me.profile.weightKg}` : '—'
+      altura.value = me.profile.heightCm != null ? `${me.profile.heightCm}` : '—'
+      sexo.value = GENDER_LABELS[me.profile.gender] ?? me.profile.gender ?? '—'
+      idade.value = me.profile.dateOfBirth ? `${calcularIdade(me.profile.dateOfBirth)}` : '—'
+    }
+
+    if (me.assessment) {
+      objetivo.value = GOAL_LABELS[me.assessment.goal] ?? me.assessment.goal ?? '—'
+      tipoDieta.value = me.assessment.dietaryRestrictions || 'Sem restrições'
+      condicoesSaude.value = me.assessment.healthConditions || 'Nenhuma'
+      alergias.value = me.assessment.allergies || 'Nenhuma'
+    }
+  } catch {
+    erro.value = 'Não foi possível carregar seu perfil.'
+  } finally {
+    loading.value = false
   }
-};
+})
 
 const voltar = () => router.back();
-const logout = () => authStore.logout();
-const editarPerfil = () => router.push('/perfil/editar');
+const logout = () => { authStore.logout(); router.push({ name: 'auth' }); };
+const editarPerfil = () => router.push({ name: 'editar-perfil' });
 </script>
 
 <template>
   <div class="profile-wrapper">
-    <!-- Header (Mantido conforme solicitado) -->
     <nav class="top-nav">
       <button class="btn-back" @click="voltar">
         <span class="arrow-icon"></span>
@@ -45,23 +86,31 @@ const editarPerfil = () => router.push('/perfil/editar');
       <button class="btn-logout" @click="logout">Sair</button>
     </nav>
 
-    <div class="content-container">
-      <!-- Seção de Identidade Premium -->
+    <!-- Estado: carregando -->
+    <div v-if="loading" class="state-center">
+      <p style="color: #94a3b8;">Carregando perfil...</p>
+    </div>
+
+    <!-- Estado: erro -->
+    <div v-else-if="erro" class="state-center">
+      <p style="color: #f87171;">{{ erro }}</p>
+    </div>
+
+    <!-- Conteúdo real -->
+    <div v-else class="content-container">
       <header class="profile-hero">
-       
         <div class="hero-info">
-          <h1>{{ usuario.nome }}</h1>
-          <p>{{ usuario.email }}</p>
+          <h1>{{ nome }}</h1>
+          <p>{{ email }}</p>
         </div>
         <button class="btn-primary-edit" @click="editarPerfil">
           Editar Perfil
         </button>
       </header>
 
-      <!-- Grade de Informações Estilizada -->
       <main class="info-grid">
-        
-        <!-- Bloco de Biometria (RF006) -->
+
+        <!-- Biometria (RF006) -->
         <section class="info-card">
           <div class="card-header">
             <div class="dot-indicator"></div>
@@ -69,17 +118,25 @@ const editarPerfil = () => router.push('/perfil/editar');
           </div>
           <div class="metrics-row">
             <div class="metric-item">
-              <p class="m-val">{{ usuario.biometria.pesoAtual }}<span>kg</span></p>
+              <p class="m-val">{{ pesoAtual }}<span v-if="pesoAtual !== '—'">kg</span></p>
               <label>Peso Atual</label>
             </div>
             <div class="metric-item">
-              <p class="m-val">{{ usuario.biometria.altura }}<span>cm</span></p>
+              <p class="m-val">{{ altura }}<span v-if="altura !== '—'">cm</span></p>
               <label>Altura</label>
+            </div>
+            <div class="metric-item">
+              <p class="m-val">{{ idade }}<span v-if="idade !== '—'"> anos</span></p>
+              <label>Idade</label>
+            </div>
+            <div class="metric-item">
+              <p class="m-val" style="font-size: 1.4rem;">{{ sexo }}</p>
+              <label>Sexo</label>
             </div>
           </div>
         </section>
 
-        <!-- Bloco de Metas (RF007) -->
+        <!-- Objetivo (RF007) -->
         <section class="info-card highlight-card">
           <div class="card-header">
             <div class="dot-indicator green"></div>
@@ -88,22 +145,12 @@ const editarPerfil = () => router.push('/perfil/editar');
           <div class="goal-content">
             <div class="goal-main">
               <label>Meta Principal</label>
-              <p>{{ usuario.metas.objetivo }}</p>
-            </div>
-            <div class="goal-sub">
-              <div class="sub-item">
-                <label>Peso Alvo</label>
-                <span>{{ usuario.metas.pesoAlvo }}kg</span>
-              </div>
-              <div class="sub-item">
-                <label>Prazo Estimado</label>
-                <span>{{ usuario.metas.prazo }}</span>
-              </div>
+              <p>{{ objetivo }}</p>
             </div>
           </div>
         </section>
 
-        <!-- Bloco de Rotina (RF008) -->
+        <!-- Rotina (RF008) -->
         <section class="info-card">
           <div class="card-header">
             <div class="dot-indicator blue"></div>
@@ -111,17 +158,13 @@ const editarPerfil = () => router.push('/perfil/editar');
           </div>
           <div class="routine-list">
             <div class="routine-item">
-              <span class="r-label">Frequência</span>
-              <span class="r-val">{{ usuario.preferencias.refeicoesDiarias }} Refeições / dia</span>
-            </div>
-            <div class="routine-item">
-              <span class="r-label">Preferência</span>
-              <span class="r-val">{{ usuario.preferencias.tipoDieta }}</span>
+              <span class="r-label">Preferência de Dieta</span>
+              <span class="r-val">{{ tipoDieta }}</span>
             </div>
           </div>
         </section>
 
-        <!-- Bloco de Saúde (RF009) -->
+        <!-- Saúde (RF009) -->
         <section class="info-card">
           <div class="card-header">
             <div class="dot-indicator red"></div>
@@ -130,11 +173,11 @@ const editarPerfil = () => router.push('/perfil/editar');
           <div class="health-summary">
             <div class="health-box">
               <label>Condições Clínicas</label>
-              <p>{{ usuario.preferencias.condicoesSaude }}</p>
+              <p>{{ condicoesSaude }}</p>
             </div>
             <div class="health-box warning">
               <label>Alergias</label>
-              <p>{{ usuario.preferencias.alergias }}</p>
+              <p>{{ alergias }}</p>
             </div>
           </div>
         </section>
@@ -248,6 +291,14 @@ const editarPerfil = () => router.push('/perfil/editar');
 .health-box label { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 800; }
 .health-box p { font-weight: 600; margin-top: 5px; }
 .health-box.warning { border-color: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+.state-center {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+}
 
 /* RESPONSIVE */
 @media (max-width: 1000px) {

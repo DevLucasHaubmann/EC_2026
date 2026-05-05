@@ -133,7 +133,7 @@ async function handleRegister() {
 }
 
 function resolveNextStep(nextStep: string) {
-  if (nextStep === '/profiles/first-access') return { name: 'perfil' }
+  if (nextStep === '/profiles/first-access') return { name: 'triagem' }
   if (nextStep === '/assessments') return { name: 'triagem' }
   if (nextStep === '/dashboard') return { name: 'dashboard' }
   return { name: 'dashboard' }
@@ -174,14 +174,14 @@ function resolveNextStep(nextStep: string) {
   backdrop-filter: blur(15px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
-  padding: 2.5rem;
+  padding: 1.8rem 2rem;
   width: 100%;
   max-width: 420px;
   z-index: 10;
   box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
 }
 
-.auth-header { text-align: center; margin-bottom: 2rem; }
+.auth-header { text-align: center; margin-bottom: 1.2rem; }
 
 .logo-area { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 0.5rem; }
 .logo-icon-box { width: 40px; height: 40px; color: var(--green); }
@@ -196,7 +196,7 @@ function resolveNextStep(nextStep: string) {
   background: rgba(15, 23, 42, 0.6);
   padding: 4px;
   border-radius: 12px;
-  margin-bottom: 2rem;
+  margin-bottom: 1.2rem;
   position: relative;
 }
 
@@ -219,7 +219,7 @@ function resolveNextStep(nextStep: string) {
   color: #fca5a5; padding: 0.8rem; border-radius: 10px; font-size: 0.85rem; margin-bottom: 1rem;
 }
 
-.form-wrapper { display: flex; flex-direction: column; gap: 1.5rem; }
+.form-wrapper { display: flex; flex-direction: column; gap: 1rem; }
 
 /* ESTILIZAÇÃO PROFUNDA DOS SEUS COMPONENTES */
 :deep(label) { color: #cbd5e1 !important; margin-bottom: 0.5rem !important; display: block; }
@@ -239,11 +239,11 @@ function resolveNextStep(nextStep: string) {
   padding: 1rem !important;
   border-radius: 10px !important;
   border: none !important;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   cursor: pointer;
 }
 
-.auth-footer { margin-top: 2rem; text-align: center; }
+.auth-footer { margin-top: 1.2rem; text-align: center; }
 .back-link { color: #94a3b8; text-decoration: none; font-size: 0.85rem; }
 .back-link:hover { color: var(--green); }
 </style>

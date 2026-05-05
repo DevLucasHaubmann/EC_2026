@@ -1,15 +1,27 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { profileService } from '@/services/modules/profile';
 import { assessmentService } from '@/services/modules/assessment';
 import { aiService } from '@/services/modules/aiRecommendation';
+import { meService } from '@/services/modules/me';
 
 const router = useRouter();
+
+// Estado de carregamento inicial (verificação de /me)
+const inicializando = ref(true);
+const erroInicial = ref<string | null>(null);
+
+// true quando o usuário já tem profile — pula etapas 1-3 de biometria
+const temProfile = ref(false);
+
+// Primeira etapa disponível: 1 (fluxo completo) ou 2 (só assessment)
+const etapaInicial = ref(1);
+
 const carregando = ref(false);
+const erroSubmissao = ref<string | null>(null);
 const etapaAtual = ref(1);
 
-// Listas para os Chips (RF009)
 const listaCondicoes = ['Diabetes Tipo 1', 'Diabetes Tipo 2', 'Hipertensão', 'Gastrite', 'Hipotireoidismo'];
 const listaAlergias = ['Glúten', 'Lactose', 'Frutos do Mar', 'Amendoim', 'Ovo', 'Soja'];
 
@@ -27,10 +39,14 @@ const form = ref({
   alergias: [] as string[]
 });
 
-// Funções de navegação
+// Quantas etapas o usuário vai ver de fato
+const totalEtapas = computed(() => 4 - etapaInicial.value + 1)
+// Número relativo da etapa atual para exibição ("Etapa 1 de 3" em vez de "Etapa 2 de 4")
+const etapaRelativa = computed(() => etapaAtual.value - etapaInicial.value + 1)
+
 const proximaEtapa = () => { if (etapaValida.value) etapaAtual.value++; };
-const etapaAnterior = () => { if (etapaAtual.value > 1) etapaAtual.value--; };
-const cancelar = () => { if (confirm("Deseja sair? Seus dados não serão salvos.")) router.push('/dashboard'); };
+const etapaAnterior = () => { if (etapaAtual.value > etapaInicial.value) etapaAtual.value--; };
+const cancelar = () => { if (confirm('Deseja sair? Seus dados não serão salvos.')) router.push('/dashboard'); };
 
 const toggleItem = (lista: 'condicoesSaude' | 'alergias', item: string) => {
   const index = form.value[lista].indexOf(item);
@@ -45,27 +61,55 @@ const etapaValida = computed(() => {
   return true;
 });
 
+onMounted(async () => {
+  try {
+    const me = await meService.getMe()
+
+    if (me.profile && me.assessment) {
+      // Onboarding completo — não deveria estar aqui, manda para dieta
+      router.replace({ name: 'dieta' })
+      return
+    }
+
+    if (me.profile) {
+      // Só falta o assessment: pula as etapas de biometria
+      temProfile.value = true
+      etapaInicial.value = 2
+      etapaAtual.value = 2
+    }
+  } catch {
+    erroInicial.value = 'Não foi possível verificar seu cadastro. Tente novamente.'
+  } finally {
+    inicializando.value = false
+  }
+})
+
 const finalizarTriagem = async () => {
+  erroSubmissao.value = null
   try {
     carregando.value = true;
-    await profileService.createOwn({
-      dateOfBirth: form.value.dataNascimento,
-      gender: form.value.genero.toUpperCase(),
-      weightKg: form.value.peso,
-      heightCm: form.value.altura,
-      activityLevel: form.value.nivelAtividade
-    });
+
+    if (!temProfile.value) {
+      await profileService.createOwn({
+        dateOfBirth: form.value.dataNascimento,
+        gender: form.value.genero.toUpperCase(),
+        weightKg: form.value.peso,
+        heightCm: form.value.altura,
+        activityLevel: form.value.nivelAtividade
+      });
+    }
+
     await assessmentService.createOwn({
       goal: form.value.objetivo === 'perda' ? 'WEIGHT_LOSS' : 'MUSCLE_GAIN',
       dietaryRestrictions: form.value.preferenciaAlimentar,
       healthConditions: form.value.condicoesSaude.join(', '),
       allergies: form.value.alergias.join(', '),
-      mealsPerDay: form.value.qtdRefeicoes
     });
     await aiService.generateNew();
-    router.push('/dieta');
+    router.push({ name: 'dieta' });
   } catch (error) {
     console.error(error);
+    erroSubmissao.value = 'Ocorreu um erro ao salvar seus dados. Tente novamente.';
   } finally {
     carregando.value = false;
   }
@@ -77,7 +121,7 @@ const finalizarTriagem = async () => {
     <!-- NAVBAR PADRONIZADA -->
     <nav class="triagem-nav">
       <div class="nav-left">
-        <button v-if="etapaAtual > 1" @click="etapaAnterior" class="btn-nav">
+        <button v-if="etapaAtual > etapaInicial" @click="etapaAnterior" class="btn-nav">
           <span class="chevron-left"></span> Voltar
         </button>
       </div>
@@ -89,17 +133,28 @@ const finalizarTriagem = async () => {
       </div>
     </nav>
 
-    <div class="content-container">
+    <!-- Verificando cadastro -->
+    <div v-if="inicializando" class="triagem-state">
+      <p>Verificando seu cadastro...</p>
+    </div>
+
+    <!-- Erro inicial -->
+    <div v-else-if="erroInicial" class="triagem-state">
+      <p class="state-error">{{ erroInicial }}</p>
+    </div>
+
+    <!-- Formulário -->
+    <div v-else class="content-container">
       <!-- PROGRESSO -->
       <header class="step-progress">
         <div class="progress-labels">
-          <span class="step-tag">Etapa {{ etapaAtual }} de 4</span>
+          <span class="step-tag">Etapa {{ etapaRelativa }} de {{ totalEtapas }}</span>
           <span class="step-name">
             {{ etapaAtual === 1 ? 'Biometria' : etapaAtual === 2 ? 'Objetivos' : etapaAtual === 3 ? 'Rotina' : 'Saúde' }}
           </span>
         </div>
         <div class="progress-bar-bg">
-          <div class="progress-bar-fill" :style="{ width: (etapaAtual / 4 * 100) + '%' }"></div>
+          <div class="progress-bar-fill" :style="{ width: (etapaRelativa / totalEtapas * 100) + '%' }"></div>
         </div>
       </header>
 
@@ -205,6 +260,7 @@ const finalizarTriagem = async () => {
 
         <!-- FOOTER AÇÕES -->
         <footer class="form-footer">
+          <p v-if="erroSubmissao" class="erro-submissao">{{ erroSubmissao }}</p>
           <button v-if="etapaAtual < 4" @click="proximaEtapa" class="btn-primary" :disabled="!etapaValida">
             Próximo Passo
           </button>
@@ -236,6 +292,18 @@ const finalizarTriagem = async () => {
 .brand span { color: var(--emerald); font-weight: 400; }
 .btn-cancel { background: transparent; border: 1px solid rgba(248, 113, 113, 0.2); color: #f87171; padding: 0.5rem 1rem; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.8rem; }
 .btn-cancel:hover { background: #ef4444; color: white; }
+
+/* Estado inicial (loading / erro) */
+.triagem-state {
+  min-height: 60vh; display: flex; align-items: center; justify-content: center;
+  color: var(--text-dim); font-size: 1rem;
+}
+.state-error { color: #f87171; }
+
+/* Erro de submissão no footer */
+.erro-submissao {
+  color: #f87171; font-size: 0.85rem; margin-bottom: 0.8rem; text-align: right;
+}
 
 /* CONTAINER */
 .content-container { max-width: 700px; margin: 0 auto; padding: 4rem 1.5rem; }

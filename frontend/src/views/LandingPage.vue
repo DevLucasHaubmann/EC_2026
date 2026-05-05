@@ -42,7 +42,7 @@ const diferenciais = ref([
     <!-- Hero Section -->
     <header class="hero">
       <div class="hero-content">
-        <p class="ia-badge">✨ Inteligência Artificial aplicada à nutrição</p>
+        <p class="ia-badge">Inteligência Artificial aplicada à nutrição</p>
         
         <h1>Seu plano alimentar se <span>adapta à sua vida.</span></h1>
         
@@ -114,7 +114,7 @@ const diferenciais = ref([
     </section>
 
     <footer class="simple-footer">
-      <p>Curitiba, 2026 • Projeto Desenvolvimento Ágil de Software • PUCPR</p>
+      <p>Curitiba, 2026 • Projeto Desenvolvido para Disciplina de Expêriencia Criativa • PUCPR</p>
     </footer>
   </div>
 </template>

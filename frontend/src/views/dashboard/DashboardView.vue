@@ -1,19 +1,17 @@
 <script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from "../../stores/auth";
+import { useAuthStore } from '../../stores/auth';
+import { dashboardService } from '../../services/modules/dashboard';
+import type { Dashboard } from '@/types/api';
 
 const router = useRouter();
 const authStore = useAuthStore();
 
-// Dados simulados conforme sua estrutura
-const usuario = {
-  nome: 'Lula',
-  status: 'Em progresso',
-  kcalConsumidas: 1250,
-  kcalMeta: 2100
-};
+const loading = ref(true);
+const erro = ref<string | null>(null);
+const dados = ref<Dashboard.Response | null>(null);
 
-// Sua lista de navegação atualizada
 const navegacao = [
   { nome: 'Efetivar Refeição', path: '/efetivarRefeicao', desc: 'Marque aqui suas refeições' },
   { nome: 'Minha Dieta', path: '/dieta', desc: 'Veja seu plano alimentar' },
@@ -22,91 +20,155 @@ const navegacao = [
   { nome: 'Perfil', path: '/perfil', desc: 'Configurações da conta' },
 ];
 
-const irPara = (path: string) => {
-  router.push(path);
-};
+const irPara = (path: string) => router.push(path);
 
 const fazerLogout = () => {
   authStore.logout();
   router.push({ name: 'auth' });
 };
+
+// Converte o nextStep do backend para a rota correta do frontend
+function resolveOnboardingRoute(nextStep: string) {
+  if (nextStep === '/profiles/first-access') return { name: 'triagem' }
+  if (nextStep === '/assessments') return { name: 'triagem' }
+  return null
+}
+
+const GOAL_LABELS: Record<Dashboard.NutritionalGoal, string> = {
+  WEIGHT_LOSS: 'Perda de peso',
+  MUSCLE_GAIN: 'Ganho de massa',
+  MAINTENANCE: 'Manutenção',
+  DIETARY_REEDUCATION: 'Reeducação alimentar',
+  SPORTS_PERFORMANCE: 'Performance esportiva',
+}
+
+const ACTIVITY_LABELS: Record<Dashboard.ActivityLevel, string> = {
+  SEDENTARY: 'Sedentário',
+  MODERATE: 'Moderado',
+  INTENSE: 'Intenso',
+}
+
+// Converte IMC em porcentagem visual para a barra de progresso (faixa saudável = 100%)
+const bmiProgressWidth = computed(() => {
+  const bmi = dados.value?.profile?.bmi
+  if (!bmi) return '0%'
+  // Normaliza: 40+ = 100%, escala linear
+  return Math.min(Math.round((bmi / 40) * 100), 100) + '%'
+})
+
+onMounted(async () => {
+  try {
+    const res = await dashboardService.getDashboard()
+
+    // Guard de onboarding: se ainda não completou, redireciona
+    if (res.onboarding.onboardingRequired) {
+      const destino = resolveOnboardingRoute(res.onboarding.nextStep)
+      if (destino) {
+        router.replace(destino)
+        return
+      }
+    }
+
+    dados.value = res
+  } catch {
+    erro.value = 'Não foi possível carregar seus dados. Tente novamente.'
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
   <main class="dashboard-wrapper">
     <div class="dashboard-container">
-      
-      <!-- Cabeçalho Principal -->
-      <header class="dashboard-header">
-        <div class="header-left">
-          <span class="context-tag">Visão Geral</span>
-          <h1>Olá, {{ usuario.nome }}</h1>
-          <p class="subtitle">Bem-vindo ao <strong>Tukan</strong>. Vamos manter o foco hoje?</p>
-        </div>
-        
-        <nav class="header-actions">
-          <button class="btn-action btn-outline" @click="irPara('/perfil')">
-            Meu Perfil
-          </button>
-          <button class="btn-action btn-danger-soft" @click="fazerLogout">
-            Sair
-          </button>
-        </nav>
-      </header>
 
-      <!-- Seção de Performance (Quick Stats) -->
-      <section class="performance-section">
-        <article class="stats-card">
-          <div class="stats-header">
-            <div class="stats-title">
-              <h3>Calorias do Dia</h3>
-              <p>Status: {{ usuario.status }}</p>
-            </div>
-            <div class="stats-numbers">
-              <span class="current">{{ usuario.kcalConsumidas }}</span>
-              <span class="separator">/</span>
-              <span class="total">{{ usuario.kcalMeta }} <span>kcal</span></span>
-            </div>
-          </div>
-          
-          <div class="progress-container">
-            <div 
-              class="progress-fill" 
-              :style="{ width: (usuario.kcalConsumidas / usuario.kcalMeta * 100) + '%' }"
-            ></div>
-          </div>
-        </article>
-      </section>
+      <!-- Estado: carregando -->
+      <div v-if="loading" class="state-center">
+        <p class="state-msg">Carregando seus dados...</p>
+      </div>
 
-      <!-- Grade de Navegação (Menu Grid) -->
-      <nav class="menu-grid">
-        <article 
-          v-for="item in navegacao" 
-          :key="item.path" 
-          class="menu-card" 
-          @click="irPara(item.path)"
-        >
-          <div class="card-icon-box">
-            <!-- Ícone visual discreto (pode ser a primeira letra ou um box vazio) -->
-            <span class="icon-placeholder"></span>
-          </div>
-          <div class="card-content">
-            <h3>{{ item.nome }}</h3>
-            <p>{{ item.desc }}</p>
-          </div>
-          <div class="card-arrow">
-            <span class="chevron"></span>
-          </div>
-        </article>
-      </nav>
-
-      <!-- Rodapé Administrativo -->
-      <footer v-if="authStore.isAuthenticated" class="admin-footer">
-        <button class="btn-admin-link" @click="irPara('/admin/usuarios')">
-          Acessar Painel de Controle Admin
+      <!-- Estado: erro -->
+      <div v-else-if="erro" class="state-center">
+        <p class="state-msg state-error">{{ erro }}</p>
+        <button class="btn-action btn-outline" style="margin-top: 1rem" @click="irPara('/auth')">
+          Voltar ao início
         </button>
-      </footer>
-      
+      </div>
+
+      <!-- Conteúdo real -->
+      <template v-else-if="dados">
+
+        <!-- Cabeçalho Principal -->
+        <header class="dashboard-header">
+          <div class="header-left">
+            <span class="context-tag">Visão Geral</span>
+            <h1>Olá, {{ dados.name }}</h1>
+            <p class="subtitle">Bem-vindo ao <strong>Tukan</strong>. Vamos manter o foco hoje?</p>
+          </div>
+
+          <nav class="header-actions">
+            <button class="btn-action btn-outline" @click="irPara('/perfil')">
+              Meu Perfil
+            </button>
+            <button class="btn-action btn-danger-soft" @click="fazerLogout">
+              Sair
+            </button>
+          </nav>
+        </header>
+
+        <!-- Seção de Perfil Nutricional (substitui card de kcal — dado não disponível na API) -->
+        <section class="performance-section">
+          <article class="stats-card">
+            <div class="stats-header">
+              <div class="stats-title">
+                <h3>Índice de Massa Corporal</h3>
+                <p>
+                  Objetivo: {{ dados.assessment ? GOAL_LABELS[dados.assessment.goal] : '—' }}
+                </p>
+              </div>
+              <div class="stats-numbers">
+                <span class="current">{{ dados.profile?.bmi ?? '—' }}</span>
+                <span class="separator">/</span>
+                <span class="total">{{ dados.profile?.bmiClassification ?? '—' }}</span>
+              </div>
+            </div>
+
+            <div class="progress-container">
+              <div class="progress-fill" :style="{ width: bmiProgressWidth }"></div>
+            </div>
+          </article>
+        </section>
+
+        <!-- Grade de Navegação (Menu Grid) -->
+        <nav class="menu-grid">
+          <article
+            v-for="item in navegacao"
+            :key="item.path"
+            class="menu-card"
+            @click="irPara(item.path)"
+          >
+            <div class="card-icon-box">
+              <span class="icon-placeholder"></span>
+            </div>
+            <div class="card-content">
+              <h3>{{ item.nome }}</h3>
+              <p>{{ item.desc }}</p>
+            </div>
+            <div class="card-arrow">
+              <span class="chevron"></span>
+            </div>
+          </article>
+        </nav>
+
+        <!-- Rodapé Administrativo -->
+        <footer v-if="authStore.isAuthenticated" class="admin-footer">
+          <button class="btn-admin-link" @click="irPara('/admin/dashboard')">
+            Acessar Painel de Controle Admin
+          </button>
+        </footer>
+
+      </template>
+
     </div>
   </main>
 </template>
@@ -359,6 +421,22 @@ const fazerLogout = () => {
 .btn-admin-link:hover {
   color: white;
   border-color: white;
+}
+
+/* Loading / Erro */
+.state-center {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.state-msg {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+.state-error {
+  color: var(--danger);
 }
 
 /* Mobile */
