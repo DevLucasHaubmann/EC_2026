@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '../../stores/auth';
 import { meService } from '../../services/modules/me';
 
 const router = useRouter();
-const authStore = useAuthStore();
 
 const loading = ref(true);
 const erro = ref<string | null>(null);
@@ -70,22 +68,11 @@ onMounted(async () => {
   }
 })
 
-const voltar = () => router.back();
-const logout = () => { authStore.logout(); router.push({ name: 'auth' }); };
 const editarPerfil = () => router.push({ name: 'editar-perfil' });
 </script>
 
 <template>
   <div class="profile-wrapper">
-    <nav class="top-nav">
-      <button class="btn-back" @click="voltar">
-        <span class="arrow-icon"></span>
-        Voltar
-      </button>
-      <span class="nav-brand">Tukan <span></span></span>
-      <button class="btn-logout" @click="logout">Sair</button>
-    </nav>
-
     <!-- Estado: carregando -->
     <div v-if="loading" class="state-center">
       <p style="color: #94a3b8;">Carregando perfil...</p>
@@ -200,32 +187,6 @@ const editarPerfil = () => router.push({ name: 'editar-perfil' });
   color: var(--text-main);
   font-family: 'Inter', sans-serif;
 }
-
-/* TOP NAV */
-.top-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.2rem 5%;
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.btn-back {
-  background: transparent; border: none; color: var(--text-muted);
-  display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;
-}
-.btn-back:hover { color: var(--accent); }
-.arrow-icon { width: 8px; height: 8px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
-
-.nav-brand { font-weight: 800; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem; }
-.nav-brand span { color: var(--accent); font-weight: 400; }
-
-.btn-logout { background: rgba(239, 68, 68, 0.1); color: #f87171; border: none; padding: 0.5rem 1.2rem; border-radius: 10px; font-weight: 700; cursor: pointer; }
 
 /* HERO SECTION */
 .content-container { max-width: 1100px; margin: 0 auto; padding: 4rem 5%; }

@@ -25,13 +25,13 @@ const router = createRouter({
       path: '/triagem',
       name: 'triagem',
       component: () => import('../views/dashboard/TriagemView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, noSidebar: true },
     },
     {
       path: '/primeiraTriagem',
       name: 'primeira-triagem',
       component: () => import('../views/dashboard/PrimeiraTriagemView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, noSidebar: true },
     },
     {
       path: '/perfil',

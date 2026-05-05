@@ -1,10 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from "../../stores/auth";
-
-const router = useRouter();
-const authStore = useAuthStore();
 
 // Dados baseados na Tela 05 e RF011/RF012/RF013
 const planoAlimentar = ref({
@@ -59,28 +54,13 @@ const planoAlimentar = ref({
   ]
 });
 
-// Ações
 const trocarRefeicao = (id: number) => {
-  // RF012 e RF020: Lógica para solicitar nova sugestão à IA
   console.log('Solicitando substituição para a refeição:', id);
 };
-
-const voltar = () => router.back();
-const logout = () => authStore.logout();
 </script>
 
 <template>
   <div class="dieta-page-wrapper">
-    <!-- NAVBAR PADRONIZADA -->
-    <nav class="standard-nav">
-      <button class="btn-back" @click="voltar">
-        <span class="chevron-left"></span>
-        Voltar
-      </button>
-      <span class="brand-logo">Tukan <span></span></span>
-      <button class="btn-logout" @click="logout">Sair</button>
-    </nav>
-
     <main class="dieta-content">
       <!-- Cabeçalho da Dieta (Tela 05) -->
       <header class="dieta-intro">
@@ -168,20 +148,6 @@ const logout = () => authStore.logout();
   color: white;
   font-family: 'Inter', sans-serif;
 }
-
-/* NAVBAR */
-.standard-nav {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 1.2rem 5%; background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05);
-  position: sticky; top: 0; z-index: 100;
-}
-.btn-back { background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; }
-.btn-back:hover { color: var(--accent); }
-.chevron-left { width: 8px; height: 8px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
-.brand-logo { font-weight: 800; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem; }
-.brand-logo span { color: var(--accent); font-weight: 400; }
-.btn-logout { background: rgba(239, 68, 68, 0.1); color: #f87171; border: none; padding: 0.5rem 1.2rem; border-radius: 10px; font-weight: 700; cursor: pointer; }
 
 /* CONTEÚDO */
 .dieta-content { max-width: 1200px; margin: 0 auto; padding: 4rem 1.5rem; }

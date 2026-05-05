@@ -1,10 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from "../../stores/auth";
-
-const router = useRouter();
-const authStore = useAuthStore();
 
 // RF014: Histórico de peso para o gráfico (Tela 07 do PDF)
 const historicoPeso = ref([
@@ -39,22 +34,10 @@ const registrarPeso = () => {
   }
 };
 
-const voltar = () => router.back();
-const logout = () => authStore.logout();
 </script>
 
 <template>
   <div class="evolucao-page">
-    <!-- NAVBAR PADRONIZADA -->
-    <nav class="standard-nav">
-      <button class="btn-back" @click="voltar">
-        <span class="chevron-left"></span>
-        Voltar
-      </button>
-      <span class="brand-logo">Tukan <span></span></span>
-      <button class="btn-logout" @click="logout">Sair</button>
-    </nav>
-
     <main class="evolucao-content">
       <!-- Cabeçalho (Tela 07) -->
       <header class="page-header">
@@ -158,20 +141,6 @@ const logout = () => authStore.logout();
   color: white;
   font-family: 'Inter', sans-serif;
 }
-
-/* NAVBAR PADRONIZADA */
-.standard-nav {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 1.2rem 5%; background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05);
-  position: sticky; top: 0; z-index: 100;
-}
-.btn-back { background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; }
-.btn-back:hover { color: var(--accent); }
-.chevron-left { width: 8px; height: 8px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
-.brand-logo { font-weight: 800; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem; }
-.brand-logo span { color: var(--accent); font-weight: 400; }
-.btn-logout { background: rgba(239, 68, 68, 0.1); color: #f87171; border: none; padding: 0.5rem 1.2rem; border-radius: 10px; font-weight: 700; cursor: pointer; }
 
 /* CONTEÚDO */
 .evolucao-content { max-width: 1100px; margin: 0 auto; padding: 4rem 1.5rem; }

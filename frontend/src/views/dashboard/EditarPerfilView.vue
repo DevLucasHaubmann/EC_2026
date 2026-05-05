@@ -66,7 +66,7 @@ const salvarAlteracoes = async () => {
       mealsPerDay: form.value.qtdRefeicoes
     });
 
-    router.push('/perfil');
+    router.push({ name: 'perfil' });
   } catch (error) {
     console.error('Erro ao atualizar perfil:', error);
   } finally {

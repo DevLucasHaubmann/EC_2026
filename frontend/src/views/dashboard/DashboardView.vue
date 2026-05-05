@@ -22,11 +22,6 @@ const navegacao = [
 
 const irPara = (path: string) => router.push(path);
 
-const fazerLogout = () => {
-  authStore.logout();
-  router.push({ name: 'auth' });
-};
-
 // Converte o nextStep do backend para a rota correta do frontend
 function resolveOnboardingRoute(nextStep: string) {
   if (nextStep === '/profiles/first-access') return { name: 'triagem' }
@@ -106,14 +101,6 @@ onMounted(async () => {
             <p class="subtitle">Bem-vindo ao <strong>Tukan</strong>. Vamos manter o foco hoje?</p>
           </div>
 
-          <nav class="header-actions">
-            <button class="btn-action btn-outline" @click="irPara('/perfil')">
-              Meu Perfil
-            </button>
-            <button class="btn-action btn-danger-soft" @click="fazerLogout">
-              Sair
-            </button>
-          </nav>
         </header>
 
         <!-- Seção de Perfil Nutricional (substitui card de kcal — dado não disponível na API) -->
@@ -225,11 +212,6 @@ onMounted(async () => {
   color: var(--text-muted);
   font-size: 1rem;
   margin-top: 0.4rem;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
 }
 
 .btn-action {
