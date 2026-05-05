@@ -1,4 +1,6 @@
 import axios from 'axios'
+import router from '@/router';
+import { useAuthStore } from '@/stores/auth';
 
 export const api = axios.create({
   baseURL: '/api',
@@ -15,60 +17,27 @@ api.interceptors.request.use((config) => {
 
 // Serializa múltiplos refreshes simultâneos numa única requisição
 let refreshPromise: Promise<void> | null = null
+// ... (Seu código existente do api.interceptors.request fica aqui em cima) ...
 
+// Interceptor de Resposta: Vigia a volta do backend
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const original = error.config
+  (response) => {
+    // Se deu tudo certo (Status 2xx), só repassa a resposta
+    return response;
+  },
+  (error) => {
+    // Se deu erro, verifica se foi um problema de autenticação (Token expirado ou inválido)
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      console.warn("Sessão expirada ou acesso negado. Deslogando...");
 
-    const isAuthEndpoint = /\/auth\//.test(original?.url ?? '')
-    const is401 = error.response?.status === 401
+      const authStore = useAuthStore();
+      authStore.logout(); // Limpa o token do localStorage e o estado do Pinia
 
-    if (!is401 || original._retry || isAuthEndpoint) {
-      return Promise.reject(error)
+      // Redireciona o usuário para a página de Auth para logar de novo
+      router.push('/auth');
     }
 
-    original._retry = true
-
-    const refreshToken = localStorage.getItem('tukan_refresh_token')
-    if (!refreshToken) {
-      redirectToAuth()
-      return Promise.reject(error)
-    }
-
-    // Se já há um refresh em andamento, aguarda ele terminar antes de repetir
-    if (!refreshPromise) {
-      refreshPromise = axios
-        .post('/api/auth/refresh', { refreshToken })
-        .then(({ data }) => {
-          localStorage.setItem('tukan_access_token', data.accessToken)
-          localStorage.setItem('tukan_refresh_token', data.refreshToken)
-        })
-        .catch(() => {
-          localStorage.removeItem('tukan_access_token')
-          localStorage.removeItem('tukan_refresh_token')
-          redirectToAuth()
-        })
-        .finally(() => {
-          refreshPromise = null
-        })
-    }
-
-    try {
-      await refreshPromise
-      const newToken = localStorage.getItem('tukan_access_token')
-      if (!newToken) return Promise.reject(error)
-      original.headers.Authorization = `Bearer ${newToken}`
-      return api(original)
-    } catch {
-      return Promise.reject(error)
-    }
+    // Repassa o erro para frente caso alguma tela precise tratar (ex: senha errada no login)
+    return Promise.reject(error);
   }
-)
-
-function redirectToAuth() {
-  // Evita redirect duplicado se já estiver na página de auth
-  if (!window.location.pathname.startsWith('/auth')) {
-    window.location.href = '/auth'
-  }
-}
+);
