@@ -63,7 +63,7 @@ const router = createRouter({
       path: '/admin/dashboard',
       name: 'admin-dashboard',
       component: () => import('../views/admin/DashboardView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
 
     // ----- 404
@@ -75,12 +75,17 @@ const router = createRouter({
   ],
 })
 
-// Proteção de rotas (impede usuário deslogado de acessar o dashboard)
+// Proteção de rotas
 router.beforeEach((to) => {
   const authStore = useAuthStore()
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'auth' }
+  }
+
+  if (to.meta.requiresAdmin) {
+    if (!authStore.isAuthenticated) return { name: 'auth' }
+    if (!authStore.isAdmin) return { name: 'dashboard' }
   }
 
   if (to.meta.guestOnly && authStore.isAuthenticated) {

@@ -35,6 +35,14 @@ const logout = async () => {
       >
         {{ link.label }}
       </RouterLink>
+      <RouterLink
+        v-if="authStore.isAdmin"
+        :to="{ name: 'admin-dashboard' }"
+        class="nav-link nav-link-admin"
+        :class="{ active: route.name === 'admin-dashboard' }"
+      >
+        Admin
+      </RouterLink>
     </nav>
 
     <button class="btn-logout" @click="logout">Sair</button>
@@ -109,6 +117,20 @@ const logout = async () => {
 .nav-link.active {
   background: rgba(16, 185, 129, 0.12);
   color: var(--accent);
+}
+
+.nav-link-admin {
+  color: #f59e0b;
+  margin-top: 8px;
+}
+
+.nav-link-admin:hover {
+  color: #fcd34d;
+}
+
+.nav-link-admin.active {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
 }
 
 .btn-logout {

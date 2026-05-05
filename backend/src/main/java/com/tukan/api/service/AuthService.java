@@ -125,7 +125,8 @@ public class AuthService {
                 jwtService.getAccessTokenExpiration(),
                 message,
                 onboarding.onboardingRequired(),
-                onboarding.nextStep()
+                onboarding.nextStep(),
+                user.getType().name()
         );
     }
 

@@ -148,7 +148,7 @@ onMounted(async () => {
         </nav>
 
         <!-- Rodapé Administrativo -->
-        <footer v-if="authStore.isAuthenticated" class="admin-footer">
+        <footer v-if="authStore.isAdmin" class="admin-footer">
           <button class="btn-admin-link" @click="irPara('/admin/dashboard')">
             Acessar Painel de Controle Admin
           </button>
