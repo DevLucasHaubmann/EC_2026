@@ -70,6 +70,12 @@ public class ProfileController {
         return ResponseEntity.ok(ProfileResponse.from(nutritionalProfileService.findById(id)));
     }
 
+    @GetMapping("/users/{userId}")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<ProfileResponse> findByUserId(@PathVariable Integer userId) {
+        return ResponseEntity.ok(ProfileResponse.from(nutritionalProfileService.findByUserId(userId)));
+    }
+
     @PostMapping("/users/{userId}")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ProfileResponse> createForUser(

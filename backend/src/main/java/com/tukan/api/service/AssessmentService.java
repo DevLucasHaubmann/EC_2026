@@ -145,7 +145,7 @@ public class AssessmentService {
         return assessmentRepository.save(assessment);
     }
 
-    private Assessment findByUserId(Integer userId) {
+    public Assessment findByUserId(Integer userId) {
         return assessmentRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException("Triagem não encontrada.", HttpStatus.NOT_FOUND));
     }

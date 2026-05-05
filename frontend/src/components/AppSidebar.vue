@@ -121,16 +121,22 @@ const logout = async () => {
 
 .nav-link-admin {
   color: #f59e0b;
-  margin-top: 8px;
+  margin-top: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: rgba(245, 158, 11, 0.05);
 }
 
 .nav-link-admin:hover {
   color: #fcd34d;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
 }
 
 .nav-link-admin.active {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #fbbf24;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.12);
 }
 
 .btn-logout {

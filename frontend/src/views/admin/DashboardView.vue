@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { adminUserService } from '../../services/modules/adminUser'
+import AdminUserModal from './AdminUserModal.vue'
 
 interface AdminUser {
   id: number
@@ -35,6 +36,7 @@ const loadingAcao = ref<number | null>(null)
 const sucesso = ref<string | null>(null)
 
 const confirmDelete = ref<AdminUser | null>(null)
+const usuarioSelecionado = ref<AdminUser | null>(null)
 
 const totalAtivos = computed(() => usuarios.value.filter(u => u.status === 'ACTIVE').length)
 const totalBloqueados = computed(() => usuarios.value.filter(u => u.status !== 'ACTIVE').length)
@@ -108,6 +110,18 @@ function statusClass(status: string) {
   if (status === 'ACTIVE') return 'ativo'
   if (status === 'BLOCKED') return 'bloqueado'
   return 'banido'
+}
+
+function onUsuarioAtualizado(updated: AdminUser) {
+  const idx = usuarios.value.findIndex(u => u.id === updated.id)
+  if (idx !== -1) usuarios.value[idx] = updated
+  usuarioSelecionado.value = updated
+}
+
+function onUsuarioDeletado(userId: number) {
+  usuarios.value = usuarios.value.filter(u => u.id !== userId)
+  totalElements.value -= 1
+  usuarioSelecionado.value = null
 }
 
 const voltar = () => router.push('/dashboard')
@@ -188,7 +202,7 @@ onMounted(() => carregarUsuarios(0))
             <tbody>
               <tr v-for="user in usuarios" :key="user.id" :class="{ 'row-loading': loadingAcao === user.id }">
                 <td>
-                  <div class="user-cell">
+                  <div class="user-cell user-cell-link" @click="usuarioSelecionado = user">
                     <strong>{{ user.name }}</strong>
                     <span>{{ user.email }}</span>
                   </div>
@@ -249,6 +263,15 @@ onMounted(() => carregarUsuarios(0))
 
     </main>
 
+    <!-- Modal de gestão do usuário -->
+    <AdminUserModal
+      v-if="usuarioSelecionado"
+      :user="usuarioSelecionado"
+      @close="usuarioSelecionado = null"
+      @updated="onUsuarioAtualizado"
+      @deleted="onUsuarioDeletado"
+    />
+
     <!-- Modal de confirmação de delete -->
     <div v-if="confirmDelete" class="modal-overlay" @click.self="confirmDelete = null">
       <div class="modal-card">
@@ -270,28 +293,38 @@ onMounted(() => carregarUsuarios(0))
 <style scoped>
 .admin-wrapper {
   --bg: #0f172a; --card: #1e293b; --emerald: #10b981; --text-dim: #94a3b8;
+  --amber: #f59e0b; --amber-dim: rgba(245, 158, 11, 0.15); --amber-border: rgba(245, 158, 11, 0.35);
   min-height: 100vh; background-color: var(--bg); color: white; font-family: 'Inter', sans-serif;
+  border-left: 3px solid var(--amber);
 }
 
 /* NAVBAR */
 .admin-nav {
-  background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255,255,255,0.05); position: sticky; top: 0; z-index: 100;
+  background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--amber-border);
+  box-shadow: 0 1px 20px rgba(245, 158, 11, 0.08);
+  position: sticky; top: 0; z-index: 100;
 }
 .nav-content { max-width: 1200px; margin: 0 auto; padding: 1.2rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
 .btn-back { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-.btn-back:hover { color: var(--emerald); }
+.btn-back:hover { color: var(--amber); }
 .chevron-left { width: 7px; height: 7px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
-.admin-tag { font-weight: 800; text-transform: uppercase; letter-spacing: 2px; font-size: 0.75rem; color: var(--emerald); }
+.admin-tag {
+  font-weight: 800; text-transform: uppercase; letter-spacing: 2px; font-size: 0.7rem;
+  color: var(--amber);
+  background: var(--amber-dim);
+  border: 1px solid var(--amber-border);
+  padding: 4px 12px; border-radius: 20px;
+}
 
 /* CONTENT */
 .admin-container { max-width: 1200px; margin: 0 auto; padding: 3rem 1.5rem; }
 
 /* STATS */
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2.5rem; }
-.stat-card { background: var(--card); padding: 2rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.03); }
+.stat-card { background: var(--card); padding: 2rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.03); border-top: 2px solid var(--amber-border); }
 .stat-card label { display: block; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.5rem; }
-.stat-card p { font-size: 2.2rem; font-weight: 900; letter-spacing: -1px; }
+.stat-card p { font-size: 2.2rem; font-weight: 900; letter-spacing: -1px; color: var(--amber); }
 
 /* ERRO */
 .sucesso-banner { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #6ee7b7; padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
@@ -319,6 +352,9 @@ onMounted(() => carregarUsuarios(0))
 
 .user-cell { display: flex; flex-direction: column; }
 .user-cell span { font-size: 0.8rem; color: var(--text-dim); }
+.user-cell-link { cursor: pointer; }
+.user-cell-link:hover strong { color: #f59e0b; }
+.user-cell-link:hover span { color: #d1d5db; }
 
 .status-pill { padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
 .status-pill.ativo { background: rgba(16, 185, 129, 0.1); color: var(--emerald); }

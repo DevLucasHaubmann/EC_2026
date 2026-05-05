@@ -136,7 +136,7 @@ public class NutritionalProfileService {
         return nutritionalProfileRepository.save(profile);
     }
 
-    private NutritionalProfile findByUserId(Integer userId) {
+    public NutritionalProfile findByUserId(Integer userId) {
         return nutritionalProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new BusinessException("Perfil não encontrado.", HttpStatus.NOT_FOUND));
     }
