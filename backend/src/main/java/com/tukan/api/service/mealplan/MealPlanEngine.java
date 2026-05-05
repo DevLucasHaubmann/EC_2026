@@ -58,7 +58,8 @@ public class MealPlanEngine {
 
         double dailyCalories = calorieCalculator.calculateDailyCalorieTarget(
                 data.profile, data.assessment, data.age);
-        Map<String, Double> distribution = mealDistributor.distribute(dailyCalories);
+        int mealsPerDay = resolveMealsPerDay(data.assessment.getMealsPerDay());
+        Map<String, Double> distribution = mealDistributor.distribute(dailyCalories, mealsPerDay);
 
         List<Food> eligible = foodFilterService.findEligibleFoods(data.assessment);
         eligible = foodCurationService.curate(eligible);
@@ -87,7 +88,8 @@ public class MealPlanEngine {
 
         double dailyCalories = calorieCalculator.calculateDailyCalorieTarget(
                 data.profile, data.assessment, data.age);
-        Map<String, Double> distribution = mealDistributor.distribute(dailyCalories);
+        int mealsPerDay = resolveMealsPerDay(data.assessment.getMealsPerDay());
+        Map<String, Double> distribution = mealDistributor.distribute(dailyCalories, mealsPerDay);
 
         List<Food> eligible = foodFilterService.findEligibleFoods(data.assessment);
         eligible = foodCurationService.curate(eligible);
@@ -233,6 +235,11 @@ public class MealPlanEngine {
                 .filter(s -> !s.isEmpty())
                 .distinct()
                 .toList();
+    }
+
+    private int resolveMealsPerDay(Integer mealsPerDay) {
+        if (mealsPerDay == null || mealsPerDay < 3 || mealsPerDay > 5) return 4;
+        return mealsPerDay;
     }
 
     private record UserProfileData(User user, NutritionalProfile profile,
