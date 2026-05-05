@@ -97,6 +97,8 @@ import AuthCard from '../../components/auth/AuthCard.vue'
 import AuthInput from '../../components/auth/AuthInput.vue'
 import AuthButton from '../../components/auth/AuthButton.vue'
 import { useAuthStore } from '../../stores'
+// Importando o novo serviço para checar o status do usuário
+import { meService } from '../../services/modules/me'
 
 type Mode = 'login' | 'register'
 
@@ -115,13 +117,13 @@ function switchMode(next: Mode) {
 
 async function handleLogin() {
   try {
-    const nextStep = await authStore.login({
+    await authStore.login({
       email: loginForm.email,
       password: loginForm.password,
     })
     loginForm.email = ''
     loginForm.password = ''
-    redirectAfterAuth(nextStep)
+    await redirectAfterAuth()
   } catch {
     // erro já está em authStore.error
   }
@@ -129,7 +131,7 @@ async function handleLogin() {
 
 async function handleRegister() {
   try {
-    const nextStep = await authStore.register({
+    await authStore.register({
       name: registerForm.name,
       email: registerForm.email,
       password: registerForm.password,
@@ -137,17 +139,27 @@ async function handleRegister() {
     registerForm.name = ''
     registerForm.email = ''
     registerForm.password = ''
-    redirectAfterAuth(nextStep)
+    await redirectAfterAuth()
   } catch {
     // erro já está em authStore.error
   }
 }
 
-function redirectAfterAuth(nextStep: string) {
-  if (nextStep === 'dashboard') {
-    router.push({ name: 'dashboard' })
-  } else {
-    // nextStep === 'create_profile' ou qualquer outro — quando existir a rota de onboarding
+// Nova lógica inteligente de redirecionamento
+async function redirectAfterAuth() {
+  try {
+    // Puxa os dados reais do usuário logado no backend
+    const meData = await meService.getMe()
+
+    // Verifica se a conta é nova (pendente de perfil/triagem) ou completa
+    if (meData.onboardingStatus === 'COMPLETED') {
+      router.push({ name: 'dashboard' })
+    } else {
+      router.push({ name: 'triagem' })
+    }
+  } catch (error) {
+    console.error('Erro ao verificar status do usuário:', error)
+    // Fallback de segurança: se a API do /me falhar, joga pro dashboard
     router.push({ name: 'dashboard' })
   }
 }
