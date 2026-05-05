@@ -101,7 +101,7 @@ class MealPlanEngineValidationTest {
             stubUserLoading();
             when(calorieCalculator.calculateDailyCalorieTarget(profile, assessment, 30))
                     .thenReturn(2000.0);
-            when(mealDistributor.distribute(2000.0))
+            when(mealDistributor.distribute(2000.0, 4))
                     .thenReturn(java.util.Map.of(
                             "BREAKFAST", 400.0, "LUNCH", 700.0,
                             "AFTERNOON_SNACK", 300.0, "DINNER", 600.0));
@@ -124,7 +124,7 @@ class MealPlanEngineValidationTest {
             stubUserLoading();
             when(calorieCalculator.calculateDailyCalorieTarget(profile, assessment, 30))
                     .thenReturn(2000.0);
-            when(mealDistributor.distribute(2000.0))
+            when(mealDistributor.distribute(2000.0, 4))
                     .thenReturn(java.util.Map.of(
                             "BREAKFAST", 400.0, "LUNCH", 700.0,
                             "AFTERNOON_SNACK", 300.0, "DINNER", 600.0));
@@ -155,7 +155,7 @@ class MealPlanEngineValidationTest {
             stubUserLoading();
             when(calorieCalculator.calculateDailyCalorieTarget(profile, assessment, 30))
                     .thenReturn(2000.0);
-            when(mealDistributor.distribute(2000.0))
+            when(mealDistributor.distribute(2000.0, 4))
                     .thenReturn(java.util.Map.of(
                             "BREAKFAST", 400.0, "LUNCH", 700.0,
                             "AFTERNOON_SNACK", 300.0, "DINNER", 600.0));
