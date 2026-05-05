@@ -19,16 +19,17 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!accessToken.value)
 
-  // Called once on app startup to rehydrate and validate the stored session
+  //const isAuthenticated = true
   async function restoreSession(): Promise<void> {
+
     const storedAccess = localStorage.getItem(ACCESS_TOKEN_KEY)
     const storedRefresh = localStorage.getItem(REFRESH_TOKEN_KEY)
 
     if (!storedAccess || !storedRefresh) return
 
-    // Optimistically rehydrate — the router guard and interceptor handle expired tokens
     accessToken.value = storedAccess
     refreshToken.value = storedRefresh
+
   }
 
   function persistTokens(access: string, refresh: string) {

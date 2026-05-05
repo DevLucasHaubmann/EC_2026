@@ -6,9 +6,9 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
-      path: '/',
-      name: 'home',
-      component: HomeView,
+      path: '/', // Página inicial definida como "/"
+      name: 'home', // Nome alterado para evitar conflitos
+      component: () => import('../views/LandingPage.vue'),
     },
     {
       path: '/auth',
@@ -27,6 +27,12 @@ const router = createRouter({
       path: '/triagem',
       name: 'triagem',
       component: () => import('../views/dashboard/TriagemView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/primeiraTriagem',
+      name: 'primeira-triagem',
+      component: () => import('../views/dashboard/PrimeiraTriagemView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -53,12 +59,28 @@ const router = createRouter({
       component: () => import('../views/dashboard/DietaView.vue'),
       meta: { requiresAuth: true },
     },
+     {
+      path: '/landingPage',
+      name: 'landing-page',
+      component: () => import('../views/LandingPage.vue'),
+      meta: { requiresAuth: true },
+    },
     {
       path: '/efetivarRefeicao',
       name: 'dieta-diaria',
       component: () => import('../views/dashboard/DietaDiariaView.vue'),
       meta: { requiresAuth: true },
-    }
+    },
+
+  //----- ADMIN
+
+   {
+      path: '/admin/DashboardView',
+      name: 'landing-page',
+      component: () => import('../views/admin/DashboardView.vue'),
+      meta: { requiresAuth: true },
+    },
+
   ],
 })
 

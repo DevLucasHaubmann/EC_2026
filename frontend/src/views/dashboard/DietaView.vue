@@ -1,250 +1,249 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-// Importando o serviço de IA da sua branch
-import { aiService } from '@/services/modules/aiRecommendation';
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from "../../stores/auth";
 
-const dieta = ref(null);
-const carregando = ref(true);
+const router = useRouter();
+const authStore = useAuthStore();
 
-onMounted(async () => {
-  try {
-    // Busca a dieta mais recente vinda do Spring Boot
-    const resposta = await aiService.getLatest();
-
-    // Adaptando o retorno do backend para o formato que a sua tela espera
-    dieta.value = {
-      objetivo: resposta.goal === 'MUSCLE_GAIN' ? 'Ganho de Massa' : 'Redução de Gordura',
-      totalKcal: resposta.totalCalories || 0,
-      macros: {
-        proteina: `${resposta.proteinGrams || 0}g`,
-        carbo: `${resposta.carbsGrams || 0}g`,
-        gordura: `${resposta.fatGrams || 0}g`
-      },
-      // Fazendo um 'map' para listar as refeições geradas pela IA
-      refeicoes: resposta.meals.map((meal: any, index: number) => ({
-        id: index + 1,
-        nome: meal.name,
-        horario: meal.time || 'A definir',
-        itens: meal.items || meal.foods.map((f: any) => f.name)
-      }))
-    };
-  } catch (error) {
-    console.error("Erro ao buscar a dieta:", error);
-  } finally {
-    carregando.value = false;
-  }
+// Dados baseados na Tela 05 e RF011/RF012/RF013
+const planoAlimentar = ref({
+  dataGeracao: '03 de Maio de 2026',
+  justificativaIA: {
+    titulo: 'Por que este plano combina com você',
+    pontos: [
+      'Estrutura alimentar com refeições práticas para encaixar em rotina acadêmica e trabalho.',
+      'Priorização de saciedade e controle glicêmico com carboidratos de melhor qualidade.',
+      'Ajustes pensados para prevenção de abandono por baixa praticidade.',
+      'Opções de substituição para preferências e restrições alimentares.'
+    ]
+  },
+  observacoes: [
+    'Objetivo: reduzir gordura corporal com manutenção de energia diária',
+    'Condição observada: tendência a longos períodos sem comer',
+    'Preferência: refeições rápidas e acessíveis'
+  ],
+  refeicoes: [
+    {
+      id: 1,
+      tipo: 'Café da manhã',
+      alimentos: 'Iogurte natural, banana, aveia e chia com opção sem lactose.',
+      macros: { prot: '28g', carb: '44g', gord: '12g' },
+      kcal: 420,
+      tag: 'Adaptado para rotina corrida'
+    },
+    {
+      id: 2,
+      tipo: 'Almoço',
+      alimentos: 'Arroz integral, feijão, frango grelhado e salada fresca.',
+      macros: { prot: '38g', carb: '58g', gord: '18g' },
+      kcal: 610,
+      tag: 'Controle glicêmico'
+    },
+    {
+      id: 3,
+      tipo: 'Lanche',
+      alimentos: 'Sanduíche natural com pasta de ricota e tomate.',
+      macros: { prot: '16g', carb: '22g', gord: '9g' },
+      kcal: 240,
+      tag: 'Prático para faculdade'
+    },
+    {
+      id: 4,
+      tipo: 'Jantar',
+      alimentos: 'Omelete com legumes, batata-doce assada e folhas verdes.',
+      macros: { prot: '34g', carb: '41g', gord: '20g' },
+      kcal: 530,
+      tag: 'Leve e saciante'
+    }
+  ]
 });
+
+// Ações
+const trocarRefeicao = (id: number) => {
+  // RF012 e RF020: Lógica para solicitar nova sugestão à IA
+  console.log('Solicitando substituição para a refeição:', id);
+};
+
+const voltar = () => router.back();
+const logout = () => authStore.logout();
 </script>
 
 <template>
-  <div class="dieta-wrapper">
-    <div v-if="carregando" class="loading-state">
-      <div class="spinner"></div>
-      <p>Buscando sua dieta personalizada na base de dados...</p>
-    </div>
+  <div class="dieta-page-wrapper">
+    <!-- NAVBAR PADRONIZADA -->
+    <nav class="standard-nav">
+      <button class="btn-back" @click="voltar">
+        <span class="chevron-left"></span>
+        Voltar
+      </button>
+      <span class="brand-logo">Tukan <span></span></span>
+      <button class="btn-logout" @click="logout">Sair</button>
+    </nav>
 
-    <div v-else-if="dieta" class="dieta-container">
-      <header class="dieta-header">
-        <h2>Sua Dieta Personalizada</h2>
-        <span class="badge">{{ dieta.objetivo }}</span>
+    <main class="dieta-content">
+      <!-- Cabeçalho da Dieta (Tela 05) -->
+      <header class="dieta-intro">
+        <span class="gen-date">Plano gerado em: {{ planoAlimentar.dataGeracao }}</span>
+        <h1>Plano alimentar completo com justificativa da IA</h1>
+        <p class="intro-desc">
+          Realize a personalização da sua dieta e confira o porquê de cada bloco alimentar, 
+          mostrando calorias, macros e adaptações possíveis.
+        </p>
       </header>
 
-      <section class="macros-grid">
-        <div class="macro-card kcal">
-          <strong>{{ dieta.totalKcal }}</strong>
-          <span>Kcal Totais</span>
-        </div>
-        <div class="macro-card">
-          <strong>{{ dieta.macros.proteina }}</strong>
-          <span>Proteínas</span>
-        </div>
-        <div class="macro-card">
-          <strong>{{ dieta.macros.carbo }}</strong>
-          <span>Carbos</span>
-        </div>
-        <div class="macro-card">
-          <strong>{{ dieta.macros.gordura }}</strong>
-          <span>Gorduras</span>
-        </div>
-      </section>
+      <div class="dieta-grid-layout">
+        
+        <!-- Coluna da Esquerda: Lista de Refeições -->
+        <section class="meals-column">
+          <article v-for="refeicao in planoAlimentar.refeicoes" :key="refeicao.id" class="meal-card-item">
+            <div class="meal-card-header">
+              <div class="meal-title-group">
+                <span class="meal-type">{{ refeicao.tipo }}</span>
+                <span class="meal-kcal">{{ refeicao.kcal }} kcal</span>
+              </div>
+              <button class="btn-swap-meal" @click="trocarRefeicao(refeicao.id)">
+                Trocar refeição
+              </button>
+            </div>
 
-      <div class="timeline">
-        <div v-for="refeicao in dieta.refeicoes" :key="refeicao.id" class="refeicao-item">
-          <div class="time-column">
-            <span class="time">{{ refeicao.horario }}</span>
-            <div class="line"></div>
-          </div>
-          <div class="content-card">
-            <h3>{{ refeicao.nome }}</h3>
-            <ul>
-              <li v-for="(item, idx) in refeicao.itens" :key="idx">{{ item }}</li>
-            </ul>
-          </div>
-        </div>
+            <p class="meal-description">{{ refeicao.alimentos }}</p>
+            
+            <div class="meal-footer">
+              <div class="macros-display">
+                <span>{{ refeicao.macros.prot }} prot</span>
+                <span>{{ refeicao.macros.carb }} carb</span>
+                <span>{{ refeicao.macros.gord }} gord</span>
+              </div>
+              <span class="meal-context-tag">{{ refeicao.tag }}</span>
+            </div>
+          </article>
+        </section>
+
+        <!-- Coluna da Direita: Justificativa e Observações (Sidebar da Tela 05) -->
+        <aside class="ai-justification-column">
+          
+          <!-- Card de Recomendação Inteligente -->
+          <section class="ai-strategy-card">
+            <div class="card-header">
+              <h3>Recomendação inteligente</h3>
+            </div>
+            <div class="strategy-content">
+              <h4>{{ planoAlimentar.justificativaIA.titulo }}</h4>
+              <ul>
+                <li v-for="(ponto, i) in planoAlimentar.justificativaIA.pontos" :key="i">
+                  {{ ponto }}
+                </li>
+              </ul>
+            </div>
+          </section>
+
+          <!-- Card de Observações do Perfil -->
+          <section class="profile-notes-card">
+            <h3>Observações do perfil</h3>
+            <div class="notes-list">
+              <div v-for="(obs, i) in planoAlimentar.observacoes" :key="i" class="note-item">
+                <span class="note-dot"></span>
+                <p>{{ obs }}</p>
+              </div>
+            </div>
+          </section>
+
+        </aside>
+
       </div>
-    </div>
-
-    <div v-else class="error-state">
-      <p>Nenhuma dieta encontrada. Por favor, realize a triagem primeiro.</p>
-      <router-link to="/triagem" class="btn-primary">Ir para Triagem</router-link>
-    </div>
+    </main>
   </div>
 </template>
 
 <style scoped>
-/* Estilos mantidos do original com ajustes para o loading */
-.dieta-wrapper {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-}
+.dieta-page-wrapper {
+  --bg-deep: #0f172a;
+  --bg-card: #1e293b;
+  --accent: #10b981;
+  --text-muted: #94a3b8;
 
-.loading-state {
-  text-align: center;
-  padding: 100px 20px;
-  color: #666;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #2D5A27;
-  border-radius: 50%;
-  margin: 0 auto 20px;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.dieta-header {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 30px;
-}
-
-.badge {
-  background: #E8F5E9;
-  color: #2D5A27;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.macros-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 15px;
-  margin-bottom: 40px;
-}
-
-.macro-card {
-  background: #fff;
-  padding: 15px;
-  border-radius: 12px;
-  text-align: center;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-  display: flex;
-  flex-direction: column;
-}
-
-.macro-card.kcal {
-  background: #2D5A27;
-  color: #fff;
-}
-
-.macro-card strong {
-  font-size: 1.2rem;
-  display: block;
-}
-
-.macro-card span {
-  font-size: 0.75rem;
-  opacity: 0.8;
-}
-
-.timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.refeicao-item {
-  display: flex;
-  gap: 20px;
-}
-
-.time-column {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 60px;
-}
-
-.time {
-  font-size: 0.85rem;
-  font-weight: bold;
-  color: #666;
-}
-
-.line {
-  width: 2px;
-  flex-grow: 1;
-  background: #E0E0E0;
-  margin-top: 10px;
-}
-
-.refeicao-item:last-child .line {
-  display: none;
-}
-
-.content-card {
-  background: #fff;
-  padding: 20px;
-  border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-  flex-grow: 1;
-}
-
-.content-card h3 {
-  margin-bottom: 10px;
-  color: #2D5A27;
-  font-size: 1.1rem;
-}
-
-.content-card ul {
-  list-style: none;
-  padding: 0;
-}
-
-.content-card li {
-  padding: 5px 0;
-  border-bottom: 1px solid #F5F5F5;
-  font-size: 0.95rem;
-  color: #444;
-}
-
-.content-card li:last-child {
-  border-bottom: none;
-}
-
-.error-state {
-  text-align: center;
-  padding: 50px;
-}
-
-.btn-primary {
-  display: inline-block;
-  margin-top: 20px;
-  padding: 10px 20px;
-  background: #2D5A27;
+  min-height: 100vh;
+  background-color: var(--bg-deep);
   color: white;
-  text-decoration: none;
-  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+}
+
+/* NAVBAR */
+.standard-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1.2rem 5%; background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05);
+  position: sticky; top: 0; z-index: 100;
+}
+.btn-back { background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.btn-back:hover { color: var(--accent); }
+.chevron-left { width: 8px; height: 8px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
+.brand-logo { font-weight: 800; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9rem; }
+.brand-logo span { color: var(--accent); font-weight: 400; }
+.btn-logout { background: rgba(239, 68, 68, 0.1); color: #f87171; border: none; padding: 0.5rem 1.2rem; border-radius: 10px; font-weight: 700; cursor: pointer; }
+
+/* CONTEÚDO */
+.dieta-content { max-width: 1200px; margin: 0 auto; padding: 4rem 1.5rem; }
+
+.dieta-intro { margin-bottom: 4rem; }
+.gen-date { color: var(--accent); font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; }
+.dieta-intro h1 { font-size: 2.5rem; font-weight: 900; margin: 0.8rem 0; letter-spacing: -1px; line-height: 1.1; }
+.intro-desc { color: var(--text-muted); font-size: 1.1rem; max-width: 800px; }
+
+/* GRID LAYOUT */
+.dieta-grid-layout { display: grid; grid-template-columns: 1fr 380px; gap: 3rem; }
+
+/* CARDS DE REFEIÇÃO */
+.meals-column { display: flex; flex-direction: column; gap: 1.5rem; }
+.meal-card-item {
+  background: var(--bg-card); padding: 2rem; border-radius: 24px;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+.meal-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.meal-type { font-size: 1.25rem; font-weight: 800; display: block; }
+.meal-kcal { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 8px; margin-top: 4px; display: inline-block; }
+
+.btn-swap-meal {
+  background: transparent; border: 1px solid rgba(255,255,255,0.1); color: white;
+  padding: 0.6rem 1rem; border-radius: 10px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: 0.3s;
+}
+.btn-swap-meal:hover { border-color: var(--accent); color: var(--accent); }
+
+.meal-description { font-size: 1.1rem; line-height: 1.6; color: #cbd5e1; margin-bottom: 2rem; }
+
+.meal-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem; }
+.macros-display { display: flex; gap: 1.2rem; }
+.macros-display span { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+.meal-context-tag { font-size: 0.75rem; font-weight: 700; color: var(--accent); background: rgba(16, 185, 129, 0.1); padding: 5px 12px; border-radius: 20px; }
+
+/* SIDEBAR IA (Tela 05) */
+.ai-justification-column { display: flex; flex-direction: column; gap: 2rem; }
+
+.ai-strategy-card {
+  background: linear-gradient(145deg, #1e293b 0%, #161e2b 100%);
+  padding: 2rem; border-radius: 24px; border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.ai-strategy-card .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
+.ia-icon { font-size: 1.5rem; }
+.ai-strategy-card h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); font-weight: 800; }
+
+.strategy-content h4 { font-size: 1.1rem; font-weight: 800; margin-bottom: 1.5rem; line-height: 1.4; }
+.strategy-content ul { list-style: none; display: flex; flex-direction: column; gap: 1.2rem; }
+.strategy-content li { font-size: 0.9rem; color: #cbd5e1; line-height: 1.5; padding-left: 1.2rem; position: relative; }
+.strategy-content li::before { content: "•"; position: absolute; left: 0; color: var(--accent); font-weight: bold; }
+
+.profile-notes-card { background: rgba(255,255,255,0.02); padding: 2rem; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); }
+.profile-notes-card h3 { font-size: 0.9rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--text-muted); text-transform: uppercase; }
+
+.notes-list { display: flex; flex-direction: column; gap: 1.2rem; }
+.note-item { display: flex; gap: 10px; align-items: flex-start; }
+.note-dot { width: 6px; height: 6px; background: var(--text-muted); border-radius: 50%; margin-top: 6px; }
+.note-item p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; }
+
+@media (max-width: 1024px) {
+  .dieta-grid-layout { grid-template-columns: 1fr; }
+  .ai-justification-column { order: -1; }
 }
 </style>

@@ -1,270 +1,376 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { meService } from '@/services/modules/me';
-import { dashboardService } from '@/services/modules/dashboard'; // Esse já existe na sua branch!
+import { useRouter } from 'vue-router';
+import { useAuthStore } from "../../stores/auth";
 
-const userName = ref('Usuário');
-const dashboardData = ref(null);
-const carregando = ref(true);
+const router = useRouter();
+const authStore = useAuthStore();
 
-onMounted(async () => {
-  try {
-    // 1. Pega o nome real do usuário
-    const me = await meService.getMe();
-    userName.value = me.userName || 'Usuário';
+// Dados simulados conforme sua estrutura
+const usuario = {
+  nome: 'Lula',
+  status: 'Em progresso',
+  kcalConsumidas: 1250,
+  kcalMeta: 2100
+};
 
-    // 2. Pega as calorias e refeições do dia (endpoint GET /dashboard)
-    const dash = await dashboardService.getDashboard();
-    dashboardData.value = dash;
-  } catch (error) {
-    console.error("Erro ao carregar o dashboard:", error);
-  } finally {
-    carregando.value = false;
-  }
-});
+// Sua lista de navegação atualizada
+const navegacao = [
+  { nome: 'Efetivar Refeição', path: '/efetivarRefeicao', desc: 'Marque aqui suas refeições' },
+  { nome: 'Minha Dieta', path: '/dieta', desc: 'Veja seu plano alimentar' },
+  { nome: 'Triagem', path: '/triagem', desc: 'Atualize seus dados' },
+  { nome: 'Evolução', path: '/evolucao', desc: 'Gráficos de progresso' },
+  { nome: 'Perfil', path: '/perfil', desc: 'Configurações da conta' },
+];
+
+const irPara = (path: string) => {
+  router.push(path);
+};
+
+const fazerLogout = () => {
+  authStore.logout();
+  router.push('/login');
+};
 </script>
 
 <template>
-  <div class="dashboard-container">
-    <!-- Header de Boas-vindas -->
-    <header class="welcome-header">
-      <div class="user-info">
-        <h2>Bom dia, {{ userName }}</h2>
-        <p>Bem-vindo ao <strong>Tukan</strong>. Vamos manter o foco hoje?</p>
-      </div>
-      <button class="btn-perfil-top" @click="irPara('/perfil')">
-        Meu Perfil
-      </button>
-      <button class="btn-logout" @click="fazerLogout" title="Sair do sistema">
-          Sair 
+  <main class="dashboard-wrapper">
+    <div class="dashboard-container">
+      
+      <!-- Cabeçalho Principal -->
+      <header class="dashboard-header">
+        <div class="header-left">
+          <span class="context-tag">Visão Geral</span>
+          <h1>Olá, {{ usuario.nome }}</h1>
+          <p class="subtitle">Bem-vindo ao <strong>Tukan</strong>. Vamos manter o foco hoje?</p>
+        </div>
+        
+        <nav class="header-actions">
+          <button class="btn-action btn-outline" @click="irPara('/perfil')">
+            Meu Perfil
+          </button>
+          <button class="btn-action btn-danger-soft" @click="fazerLogout">
+            Sair
+          </button>
+        </nav>
+      </header>
+
+      <!-- Seção de Performance (Quick Stats) -->
+      <section class="performance-section">
+        <article class="stats-card">
+          <div class="stats-header">
+            <div class="stats-title">
+              <h3>Calorias do Dia</h3>
+              <p>Status: {{ usuario.status }}</p>
+            </div>
+            <div class="stats-numbers">
+              <span class="current">{{ usuario.kcalConsumidas }}</span>
+              <span class="separator">/</span>
+              <span class="total">{{ usuario.kcalMeta }} <span>kcal</span></span>
+            </div>
+          </div>
+          
+          <div class="progress-container">
+            <div 
+              class="progress-fill" 
+              :style="{ width: (usuario.kcalConsumidas / usuario.kcalMeta * 100) + '%' }"
+            ></div>
+          </div>
+        </article>
+      </section>
+
+      <!-- Grade de Navegação (Menu Grid) -->
+      <nav class="menu-grid">
+        <article 
+          v-for="item in navegacao" 
+          :key="item.path" 
+          class="menu-card" 
+          @click="irPara(item.path)"
+        >
+          <div class="card-icon-box">
+            <!-- Ícone visual discreto (pode ser a primeira letra ou um box vazio) -->
+            <span class="icon-placeholder"></span>
+          </div>
+          <div class="card-content">
+            <h3>{{ item.nome }}</h3>
+            <p>{{ item.desc }}</p>
+          </div>
+          <div class="card-arrow">
+            <span class="chevron"></span>
+          </div>
+        </article>
+      </nav>
+
+      <!-- Rodapé Administrativo -->
+      <footer v-if="authStore.isAuthenticated" class="admin-footer">
+        <button class="btn-admin-link" @click="irPara('/admin/usuarios')">
+          Acessar Painel de Controle Admin
         </button>
-    </header>
-
-    <!-- Card de Progresso Rápido -->
-    <section class="quick-stats">
-      <div class="progress-card">
-        <div class="progress-info">
-          <h3>Calorias do Dia</h3>
-          <span>{{ usuario.kcalConsumidas }} / {{ usuario.kcalMeta }} kcal</span>
-        </div>
-        <div class="progress-bar-bg">
-          <div 
-            class="progress-bar-fill" 
-            :style="{ width: (usuario.kcalConsumidas / usuario.kcalMeta * 100) + '%' }"
-          ></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Grade de Navegação Principal -->
-    <section class="menu-grid">
-      <div 
-        v-for="item in navegacao" 
-        :key="item.path" 
-        class="menu-card" 
-        @click="irPara(item.path)"
-      >
-        <span class="icon">{{ item.icone }}</span>
-        <div class="card-text">
-          <h3>{{ item.nome }}</h3>
-          <p>{{ item.desc }}</p>
-        </div>
-        <span class="arrow">→</span>
-      </div>
-    </section>
-
-    <!-- Atalho para Admin (Se for Admin) -->
-    <footer v-if="authStore.isAuthenticated" class="admin-shortcut">
-      <button @click="irPara('/admin/usuarios')" class="btn-admin">
-        ⚙️ Acessar Painel Admin
-      </button>
-    </footer>
-  </div>
+      </footer>
+      
+    </div>
+  </main>
 </template>
 
 <style scoped>
+/* Configurações de Cores e Estilo Tukan */
+.dashboard-wrapper {
+  --bg-deep: #0f172a;
+  --bg-card: #1e293b;
+  --accent: #10b981;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --danger: #f87171;
+
+  min-height: 100vh;
+  background-color: var(--bg-deep);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  padding: 2rem 0;
+}
+
 .dashboard-container {
-  max-width: 900px;
-  margin: 2rem auto;
+  max-width: 1000px;
+  margin: 0 auto;
   padding: 0 1.5rem;
 }
 
-.welcome-header {
+/* Header */
+.dashboard-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2.5rem;
+  align-items: flex-end;
+  margin-bottom: 4rem;
 }
 
-.user-info h1 {
-  font-size: 1.8rem;
-  color: #333;
-  margin-bottom: 0.2rem;
+.context-tag {
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  display: block;
+  margin-bottom: 0.5rem;
 }
 
-.user-info p {
-  color: #666;
+.header-left h1 {
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  margin: 0;
 }
 
-.btn-perfil-top {
-  background: white;
-  border: 1px solid #ddd;
-  padding: 0.6rem 1.2rem;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.btn-perfil-top:hover {
-  background: #f5f5f5;
-  border-color: var(--primary-color, #2D5A27);
-}
-
-.quick-stats {
-  margin-bottom: 2.5rem;
-}
-
-.progress-card {
-  background: var(--primary-color, #2D5A27);
-  color: white;
-  padding: 1.5rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(45, 90, 39, 0.2);
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.progress-bar-bg {
-  height: 12px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.progress-bar-fill {
-  height: 100%;
-  background: #A8D5BA;
-  border-radius: 6px;
-  transition: width 0.5s ease-out;
-}
-
-.menu-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.2rem;
-}
-
-.menu-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  border: 1px solid #f0f0f0;
-}
-
-.menu-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 15px rgba(0,0,0,0.08);
-  border-color: #A8D5BA;
-}
-
-.icon {
-  font-size: 2rem;
-}
-
-.card-text h3 {
-  font-size: 1.1rem;
-  margin-bottom: 0.2rem;
-}
-
-.card-text p {
-  font-size: 0.85rem;
-  color: #888;
-}
-
-.arrow {
-  margin-left: auto;
-  color: #ccc;
-  font-weight: bold;
-}
-
-.admin-shortcut {
-  margin-top: 3rem;
-  text-align: center;
-}
-
-.btn-admin {
-  background: #333;
-  color: white;
-  border: none;
-  padding: 0.8rem 1.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-/* Responsividade para Celular */
-@media (max-width: 600px) {
-  .menu-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .welcome-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
+.subtitle {
+  color: var(--text-muted);
+  font-size: 1rem;
+  margin-top: 0.4rem;
 }
 
 .header-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
+}
+
+.btn-action {
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: white;
+}
+
+.btn-outline:hover {
+  background: var(--bg-card);
+  border-color: var(--accent);
+}
+
+.btn-danger-soft {
+  background: rgba(248, 113, 113, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+.btn-danger-soft:hover {
+  background: var(--danger);
+  color: white;
+}
+
+/* Stats Card */
+.performance-section {
+  margin-bottom: 2.5rem;
+}
+
+.stats-card {
+  background: var(--bg-card);
+  padding: 2.5rem;
+  border-radius: 28px;
+  border: 1px solid rgba(255,255,255,0.03);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
+  margin-bottom: 1.5rem;
 }
 
-.btn-perfil-top {
-  background: white;
-  border: 1px solid #ddd;
-  padding: 0.6rem 1.2rem;
+.stats-title h3 {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.stats-title p {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.stats-numbers {
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.stats-numbers .separator {
+  margin: 0 0.4rem;
+  color: var(--text-muted);
+  font-weight: 300;
+}
+
+.stats-numbers .total {
+  color: var(--text-muted);
+}
+
+.stats-numbers .total span {
+  font-size: 1rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.progress-container {
+  height: 10px;
+  background: rgba(255,255,255,0.05);
   border-radius: 20px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #34d399);
+  border-radius: 20px;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+/* Menu Grid */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.menu-card {
+  background: var(--bg-card);
+  padding: 2rem;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
   cursor: pointer;
-  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255,255,255,0.02);
+}
+
+.menu-card:hover {
+  transform: translateY(-5px);
+  background: #243347;
+  border-color: var(--accent);
+}
+
+.card-icon-box {
+  width: 52px;
+  height: 52px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.icon-placeholder {
+  width: 12px;
+  height: 12px;
+  background: currentColor;
+  border-radius: 3px;
+}
+
+.card-content h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin-bottom: 0.2rem;
+}
+
+.card-content p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.chevron {
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--text-muted);
+  border-right: 2px solid var(--text-muted);
+  transform: rotate(45deg);
+  display: block;
+  margin-left: auto;
+}
+
+.menu-card:hover .chevron {
+  border-color: var(--accent);
+}
+
+/* Admin Footer */
+.admin-footer {
+  margin-top: 4rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  text-align: center;
+}
+
+.btn-admin-link {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 0.6rem 2rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
-.btn-logout {
-  background: #fff0f0; /* Um tom leve de vermelho para indicar saída */
-  border: 1px solid #ffcccc;
-  color: #c0392b;
-  padding: 0.6rem 1.2rem;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s;
+.btn-admin-link:hover {
+  color: white;
+  border-color: white;
 }
 
-.btn-logout:hover {
-  background: #ffe0e0;
-  border-color: #e74c3c;
-  transform: scale(1.05);
-}
-
-/* Ajuste na responsividade */
-@media (max-width: 600px) {
-  .header-actions {
-    width: 100%;
-    justify-content: space-between;
+/* Mobile */
+@media (max-width: 768px) {
+  .menu-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2rem;
   }
 }
-
 </style>
