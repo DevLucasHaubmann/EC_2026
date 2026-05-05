@@ -103,7 +103,6 @@ import AuthCard from '../../components/auth/AuthCard.vue'
 import AuthInput from '../../components/auth/AuthInput.vue'
 import AuthButton from '../../components/auth/AuthButton.vue'
 import { useAuthStore } from '../../stores'
-import { meService } from '../../services/modules/me'
 
 type Mode = 'login' | 'register'
 
@@ -121,29 +120,23 @@ function switchMode(next: Mode) {
 
 async function handleLogin() {
   try {
-    await authStore.login({ email: loginForm.email, password: loginForm.password })
-    await redirectAfterAuth()
+    const nextStep = await authStore.login({ email: loginForm.email, password: loginForm.password })
+    router.push(resolveNextStep(nextStep))
   } catch (e) {}
 }
 
 async function handleRegister() {
   try {
-    await authStore.register({ name: registerForm.name, email: registerForm.email, password: registerForm.password })
-    await redirectAfterAuth()
+    const nextStep = await authStore.register({ name: registerForm.name, email: registerForm.email, password: registerForm.password })
+    router.push(resolveNextStep(nextStep))
   } catch (e) {}
 }
 
-async function redirectAfterAuth() {
-  try {
-    const meData = await meService.getMe()
-    if (meData.onboardingStatus === 'COMPLETED') {
-      router.push({ name: 'dashboard' })
-    } else {
-      router.push({ name: 'triagem' })
-    }
-  } catch {
-    router.push({ name: 'dashboard' })
-  }
+function resolveNextStep(nextStep: string) {
+  if (nextStep === '/profiles/first-access') return { name: 'perfil' }
+  if (nextStep === '/assessments') return { name: 'triagem' }
+  if (nextStep === '/dashboard') return { name: 'dashboard' }
+  return { name: 'dashboard' }
 }
 </script>
 

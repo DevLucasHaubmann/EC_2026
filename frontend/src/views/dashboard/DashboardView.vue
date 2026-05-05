@@ -28,7 +28,7 @@ const irPara = (path: string) => {
 
 const fazerLogout = () => {
   authStore.logout();
-  router.push('/login');
+  router.push({ name: 'auth' });
 };
 </script>
 

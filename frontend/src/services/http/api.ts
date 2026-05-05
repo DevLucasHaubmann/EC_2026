@@ -24,8 +24,7 @@ api.interceptors.response.use(
     const original = error.config
 
     const isAuthEndpoint = /\/auth\//.test(original?.url ?? '')
-    // 1. Melhoria: Trata tanto 401 (Não Autenticado) quanto 403 (Sem Permissão)
-    const isUnauthorized = error.response?.status === 401 || error.response?.status === 403
+    const isUnauthorized = error.response?.status === 401
 
     if (!isUnauthorized || original._retry || isAuthEndpoint) {
       return Promise.reject(error)
@@ -69,22 +68,14 @@ api.interceptors.response.use(
 )
 
 function redirectToAuth() {
-  // Limpa o localStorage por segurança
-  localStorage.removeItem('tukan_access_token')
-  localStorage.removeItem('tukan_refresh_token')
-
-  // Limpa o estado da store do Vue/Pinia (para o app saber que deslogou visualmente)
   try {
     const authStore = useAuthStore()
-    // Chama a action de limpar dados que você já tiver (ex: clearUser, logout...)
-    // Se não tiver método específico, pode apenas chamar authStore.$reset()
-    authStore.isAuthenticated = false
-    authStore.user = null
-  } catch (error) {
-    // try/catch evita erro caso o redirecionamento aconteça antes do Pinia ser montado
+    authStore.clearSession()
+  } catch {
+    localStorage.removeItem('tukan_access_token')
+    localStorage.removeItem('tukan_refresh_token')
   }
 
-  // Evita redirect duplicado e usa a navegação suave do SPA
   if (!window.location.pathname.startsWith('/auth')) {
     router.push({ name: 'auth' })
   }

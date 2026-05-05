@@ -17,9 +17,6 @@ const diferenciais = ref([
   }
 ]);
 
-const irPara = (path: string) => {
-  router.push(path);
-};
 </script>
 
 <template>
@@ -38,7 +35,7 @@ const irPara = (path: string) => {
         <span class="logo-text">tukan<span>nutrition</span></span>
       </div>
       <div class="auth-btns">
-        <button class="btn-login" @click="irPara('/auth')">Entrar</button>
+        <button class="btn-login" @click="router.push({ name: 'auth' })">Entrar</button>
       </div>
     </nav>
 
@@ -55,7 +52,7 @@ const irPara = (path: string) => {
         </p>
 
         <div class="cta-group">
-          <button class="btn-primary" @click="irPara('/cadastro')">Começar agora</button>
+          <button class="btn-primary" @click="router.push({ name: 'auth' })">Começar agora</button>
         </div>
       </div>
 

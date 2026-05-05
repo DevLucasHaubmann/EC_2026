@@ -1,13 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
-      path: '/', // Página inicial definida como "/"
-      name: 'home', // Nome alterado para evitar conflitos
+      path: '/',
+      name: 'home',
       component: () => import('../views/LandingPage.vue'),
     },
     {
@@ -22,7 +21,6 @@ const router = createRouter({
       component: () => import('../views/dashboard/DashboardView.vue'),
       meta: { requiresAuth: true },
     },
-    // ---- NOVAS ROTAS ADICIONADAS ABAIXO ----
     {
       path: '/triagem',
       name: 'triagem',
@@ -59,12 +57,6 @@ const router = createRouter({
       component: () => import('../views/dashboard/DietaView.vue'),
       meta: { requiresAuth: true },
     },
-     {
-      path: '/landingPage',
-      name: 'landing-page',
-      component: () => import('../views/LandingPage.vue'),
-      meta: { requiresAuth: true },
-    },
     {
       path: '/efetivarRefeicao',
       name: 'dieta-diaria',
@@ -72,15 +64,20 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
 
-  //----- ADMIN
-
-   {
-      path: '/admin/DashboardView',
-      name: 'landing-page',
+    // ----- ADMIN
+    {
+      path: '/admin/dashboard',
+      name: 'admin-dashboard',
       component: () => import('../views/admin/DashboardView.vue'),
       meta: { requiresAuth: true },
     },
 
+    // ----- 404
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('../views/NotFoundView.vue'),
+    },
   ],
 })
 
