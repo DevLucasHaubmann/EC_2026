@@ -37,6 +37,22 @@ export namespace Dashboard {
   export type NutritionalGoal = 'WEIGHT_LOSS' | 'MUSCLE_GAIN' | 'MAINTENANCE' | 'DIETARY_REEDUCATION' | 'SPORTS_PERFORMANCE'
 }
 
+export namespace Assessment {
+  export interface Response {
+    id: number
+    userId: number
+    userName: string
+    goal: string
+    dietaryRestrictions: string | null
+    allergies: string | null
+    healthConditions: string | null
+    mealsPerDay: number | null
+    targetWeightKg: number | null
+    createdAt: string
+    updatedAt: string | null
+  }
+}
+
 export namespace Recommendation {
   export interface DailyMealPlan {
     dailyCalorieTarget: number

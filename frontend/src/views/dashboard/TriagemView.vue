@@ -45,6 +45,7 @@ const form = ref({
   peso: null as number | null,
   altura: null as number | null,
   objetivo: '',
+  pesoAlvo: null as number | null,
   nivelAtividade: 'MODERATE',
   qtdRefeicoes: 3,
   preferenciaAlimentar: 'ONIVORA',
@@ -117,6 +118,8 @@ const finalizarTriagem = async () => {
       dietaryRestrictions: form.value.preferenciaAlimentar,
       healthConditions: form.value.condicoesSaude.join(', '),
       allergies: form.value.alergias.join(', '),
+      mealsPerDay: form.value.qtdRefeicoes,
+      targetWeightKg: form.value.pesoAlvo ?? null,
     });
     await aiService.generateNew();
     router.push({ name: 'dieta' });
@@ -219,6 +222,10 @@ const finalizarTriagem = async () => {
               <h3>{{ obj.label }}</h3>
               <p>{{ obj.desc }}</p>
             </article>
+          </div>
+          <div class="field mt-large" v-if="form.objetivo">
+            <label>Peso alvo (kg) <span class="label-optional">— opcional</span></label>
+            <input type="number" step="0.1" v-model="form.pesoAlvo" placeholder="ex: 75" class="large-input" />
           </div>
         </div>
 
@@ -370,6 +377,7 @@ input:focus { border-color: var(--emerald); outline: none; }
 
 .mt-large { margin-top: 2rem; }
 .mb-large { margin-bottom: 2rem; }
+.label-optional { font-size: 0.8rem; color: var(--text-dim); font-weight: 400; text-transform: none; letter-spacing: 0; }
 
 @media (max-width: 650px) { .input-grid, .goal-grid { grid-template-columns: 1fr 1fr; } .form-card { padding: 2rem; } }
 @media (max-width: 420px) { .goal-grid { grid-template-columns: 1fr; } }

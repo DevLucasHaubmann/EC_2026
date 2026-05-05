@@ -18,6 +18,8 @@ const objetivo = ref<string>('—')
 const tipoDieta = ref<string>('—')
 const condicoesSaude = ref<string>('—')
 const alergias = ref<string>('—')
+const refeicoesPorDia = ref<string>('—')
+const pesoAlvo = ref<string>('—')
 
 const GOAL_LABELS: Record<string, string> = {
   WEIGHT_LOSS: 'Perda de peso',
@@ -60,6 +62,8 @@ onMounted(async () => {
       tipoDieta.value = me.assessment.dietaryRestrictions || 'Sem restrições'
       condicoesSaude.value = me.assessment.healthConditions || 'Nenhuma'
       alergias.value = me.assessment.allergies || 'Nenhuma'
+      refeicoesPorDia.value = me.assessment.mealsPerDay != null ? `${me.assessment.mealsPerDay}` : '—'
+      pesoAlvo.value = me.assessment.targetWeightKg != null ? `${me.assessment.targetWeightKg}` : '—'
     }
   } catch {
     erro.value = 'Não foi possível carregar seu perfil.'
@@ -134,6 +138,12 @@ const editarPerfil = () => router.push({ name: 'editar-perfil' });
               <label>Meta Principal</label>
               <p>{{ objetivo }}</p>
             </div>
+            <div v-if="pesoAlvo !== '—'" class="goal-sub">
+              <div class="sub-item">
+                <label>Peso Alvo</label>
+                <span>{{ pesoAlvo }} kg</span>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -147,6 +157,10 @@ const editarPerfil = () => router.push({ name: 'editar-perfil' });
             <div class="routine-item">
               <span class="r-label">Preferência de Dieta</span>
               <span class="r-val">{{ tipoDieta }}</span>
+            </div>
+            <div class="routine-item">
+              <span class="r-label">Refeições por dia</span>
+              <span class="r-val">{{ refeicoesPorDia !== '—' ? refeicoesPorDia + 'x' : '—' }}</span>
             </div>
           </div>
         </section>

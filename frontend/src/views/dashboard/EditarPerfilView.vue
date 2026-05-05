@@ -36,6 +36,8 @@ const form = ref({
   altura: null as number | null,
   nivelAtividade: 'MODERATE',
   objetivo: '',
+  qtdRefeicoes: 3,
+  pesoAlvo: null as number | null,
   preferenciaAlimentar: 'ONIVORA',
   condicoesSaude: [] as string[],
   alergias: [] as string[],
@@ -61,6 +63,8 @@ onMounted(async () => {
       form.value.preferenciaAlimentar = me.assessment.dietaryRestrictions ?? 'ONIVORA';
       form.value.condicoesSaude      = splitField(me.assessment.healthConditions);
       form.value.alergias            = splitField(me.assessment.allergies);
+      form.value.qtdRefeicoes        = me.assessment.mealsPerDay ?? 3;
+      form.value.pesoAlvo            = me.assessment.targetWeightKg ?? null;
     }
   } catch {
     erroInicial.value = 'Não foi possível carregar seus dados. Tente novamente.';
@@ -93,6 +97,8 @@ const salvarAlteracoes = async () => {
       dietaryRestrictions: form.value.preferenciaAlimentar,
       healthConditions:    form.value.condicoesSaude.join(', '),
       allergies:           form.value.alergias.join(', '),
+      mealsPerDay:         form.value.qtdRefeicoes,
+      targetWeightKg:      form.value.pesoAlvo,
     });
 
     router.push({ name: 'perfil' });
@@ -194,6 +200,23 @@ const cancelar = () => router.back();
               <option value="MODERATE">Moderado (3–5x por semana)</option>
               <option value="INTENSE">Intenso (treino diário)</option>
             </select>
+          </div>
+
+          <div class="input-grid mt-4">
+            <div class="field">
+              <label>Refeições por dia</label>
+              <div class="radio-tabs">
+                <button
+                  v-for="n in [3, 4, 5]" :key="n" type="button"
+                  :class="{ active: form.qtdRefeicoes === n }"
+                  @click="form.qtdRefeicoes = n"
+                >{{ n }}</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Peso alvo (kg) <span class="label-optional">— opcional</span></label>
+              <input type="number" step="0.1" v-model="form.pesoAlvo" placeholder="ex: 75" />
+            </div>
           </div>
         </section>
 
@@ -339,6 +362,7 @@ input:focus, select:focus { border-color: var(--accent); outline: none; }
 .btn-cancel { background: transparent; border: none; color: var(--text-muted); padding: 0.5rem; cursor: pointer; font-weight: 600; }
 
 .mt-4 { margin-top: 1.5rem; }
+.label-optional { font-size: 0.78rem; color: var(--text-muted); font-weight: 400; }
 
 @media (max-width: 600px) {
   .input-grid { grid-template-columns: 1fr; }

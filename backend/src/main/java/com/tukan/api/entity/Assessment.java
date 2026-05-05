@@ -45,6 +45,12 @@ public class Assessment {
     @Column(name = "health_conditions", length = 500)
     private String healthConditions;
 
+    @Column(name = "meals_per_day")
+    private Integer mealsPerDay;
+
+    @Column(name = "target_weight_kg")
+    private Double targetWeightKg;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

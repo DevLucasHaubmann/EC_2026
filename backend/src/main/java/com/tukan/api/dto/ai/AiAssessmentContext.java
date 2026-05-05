@@ -15,6 +15,9 @@ public record AiAssessmentContext(
         List<String> allergies,
 
         @JsonProperty("healthConditions")
-        List<String> healthConditions
+        List<String> healthConditions,
+
+        @JsonProperty("mealsPerDay")
+        Integer mealsPerDay
 ) {
 }
