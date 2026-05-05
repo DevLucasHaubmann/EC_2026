@@ -29,7 +29,7 @@ onMounted(async () => {
     <!-- Header de Boas-vindas -->
     <header class="welcome-header">
       <div class="user-info">
-        <h1>Olá, {{ usuario.nome }}! 👋</h1>
+        <h2>Bom dia, {{ userName }}</h2>
         <p>Bem-vindo ao <strong>Tukan</strong>. Vamos manter o foco hoje?</p>
       </div>
       <button class="btn-perfil-top" @click="irPara('/perfil')">
