@@ -1,29 +1,27 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
-import { useAuthStore } from "../../stores/auth";
-const router = useRouter();
-const authStore = useAuthStore();
+import { ref, onMounted } from 'vue';
+import { meService } from '@/services/modules/me';
+import { dashboardService } from '@/services/modules/dashboard'; // Esse já existe na sua branch!
 
-// Dados simulados para o visual do Dashboard
-const usuario = {
-  nome: 'Adrian Antônio',
-  status: 'Em progresso',
-  kcalConsumidas: 1250,
-  kcalMeta: 2100
-};
+const userName = ref('Usuário');
+const dashboardData = ref(null);
+const carregando = ref(true);
 
-const navegacao = [
-  { nome: 'Efetivar Refeição', icone: '', path: '/efetivarRefeicao', desc: 'Marque aqui suas refeições' },
-  { nome: 'Minha Dieta', icone: '', path: '/dieta', desc: 'Veja seu plano alimentar' },
-  { nome: 'Triagem', icone: '', path: '/triagem', desc: 'Atualize seus dados' },
-  { nome: 'Evolução', icone: '', path: '/evolucao', desc: 'Gráficos de progresso' },
-  { nome: 'Perfil', icone: '', path: '/perfil', desc: 'Configurações da conta' },
-  
-];
+onMounted(async () => {
+  try {
+    // 1. Pega o nome real do usuário
+    const me = await meService.getMe();
+    userName.value = me.userName || 'Usuário';
 
-const irPara = (path: string) => {
-  router.push(path);
-};
+    // 2. Pega as calorias e refeições do dia (endpoint GET /dashboard)
+    const dash = await dashboardService.getDashboard();
+    dashboardData.value = dash;
+  } catch (error) {
+    console.error("Erro ao carregar o dashboard:", error);
+  } finally {
+    carregando.value = false;
+  }
+});
 </script>
 
 <template>
