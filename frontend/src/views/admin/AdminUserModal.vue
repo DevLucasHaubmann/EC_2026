@@ -351,7 +351,7 @@ watch(abaAtiva, (tab) => {
 })
 
 function labelActivityLevel(v: string) {
-  const m: Record<string, string> = { SEDENTARY: 'Sedentário', MODERATE: 'Moderado', INTENSE: 'Intenso', VERY_INTENSE: 'Muito Intenso' }
+  const m: Record<string, string> = { SEDENTARY: 'Sedentário', LIGHT: 'Leve', MODERATE: 'Moderado', INTENSE: 'Intenso', VERY_INTENSE: 'Muito intenso' }
   return m[v] ?? v
 }
 function labelGoal(v: string) {
@@ -479,9 +479,10 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
                 <label>Nível de Atividade</label>
                 <select v-model="formPerfil.activityLevel">
                   <option value="SEDENTARY">Sedentário</option>
+                  <option value="LIGHT">Leve</option>
                   <option value="MODERATE">Moderado</option>
                   <option value="INTENSE">Intenso</option>
-                  <option value="VERY_INTENSE">Muito Intenso</option>
+                  <option value="VERY_INTENSE">Muito intenso</option>
                 </select>
               </div>
               <div class="aba-footer">

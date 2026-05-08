@@ -32,7 +32,7 @@ export namespace Dashboard {
     onboarding: OnboardingStatus
   }
 
-  export type ActivityLevel = 'SEDENTARY' | 'MODERATE' | 'INTENSE'
+  export type ActivityLevel = 'SEDENTARY' | 'LIGHT' | 'MODERATE' | 'INTENSE' | 'VERY_INTENSE'
   export type Gender = 'MALE' | 'FEMALE'
   export type NutritionalGoal = 'WEIGHT_LOSS' | 'MUSCLE_GAIN' | 'MAINTENANCE' | 'DIETARY_REEDUCATION' | 'SPORTS_PERFORMANCE'
 }

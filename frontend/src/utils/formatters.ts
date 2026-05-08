@@ -25,13 +25,13 @@ export function formatBMI(bmi: number): string {
 
 export function formatActivityLevel(level: string): string {
   const map: Record<string, string> = {
-    SEDENTARIO: 'Sedentário',
-    LEVE: 'Leve',
-    MODERADO: 'Moderado',
-    INTENSO: 'Intenso',
-    MUITO_INTENSO: 'Muito Intenso',
+    SEDENTARY: 'Sedentário',
+    LIGHT: 'Leve',
+    MODERATE: 'Moderado',
+    INTENSE: 'Intenso',
+    VERY_INTENSE: 'Muito intenso',
   }
-  return map[level] || level
+  return map[level] ?? level
 }
 
 export function formatNutritionalGoal(goal: string): string {

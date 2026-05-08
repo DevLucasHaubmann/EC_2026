@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { meService } from '../../services/modules/me';
+import { formatActivityLevel } from '../../utils/formatters';
 
 const router = useRouter();
 
@@ -14,6 +15,7 @@ const pesoAtual = ref<string>('—')
 const altura = ref<string>('—')
 const idade = ref<string>('—')
 const sexo = ref<string>('—')
+const nivelAtividade = ref<string>('—')
 const objetivo = ref<string>('—')
 const tipoDieta = ref<string>('—')
 const condicoesSaude = ref<string>('—')
@@ -55,6 +57,7 @@ onMounted(async () => {
       altura.value = me.profile.heightCm != null ? `${me.profile.heightCm}` : '—'
       sexo.value = GENDER_LABELS[me.profile.gender] ?? me.profile.gender ?? '—'
       idade.value = me.profile.dateOfBirth ? `${calcularIdade(me.profile.dateOfBirth)}` : '—'
+      nivelAtividade.value = me.profile.activityLevel ? formatActivityLevel(me.profile.activityLevel) : '—'
     }
 
     if (me.assessment) {
@@ -123,6 +126,10 @@ const editarPerfil = () => router.push({ name: 'editar-perfil' });
             <div class="metric-item">
               <p class="m-val" style="font-size: 1.4rem;">{{ sexo }}</p>
               <label>Sexo</label>
+            </div>
+            <div class="metric-item">
+              <p class="m-val" style="font-size: 1.4rem;">{{ nivelAtividade }}</p>
+              <label>Nível de Atividade</label>
             </div>
           </div>
         </section>
