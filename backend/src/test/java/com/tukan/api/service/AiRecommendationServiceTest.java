@@ -12,7 +12,7 @@ import com.tukan.api.exception.BusinessException;
 import com.tukan.api.repository.RecommendationFeedbackRepository;
 import com.tukan.api.repository.RecommendationRepository;
 import com.tukan.api.service.mealplan.MealPlanAiService;
-import com.tukan.api.service.mealplan.MealPlanEngine;
+import com.tukan.api.service.mealplan.MealPlanGenerationResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -45,9 +45,6 @@ class AiRecommendationServiceTest {
     private MealPlanAiService mealPlanAiService;
 
     @Mock
-    private MealPlanEngine mealPlanEngine;
-
-    @Mock
     private RecommendationRepository recommendationRepository;
 
     @Mock
@@ -73,9 +70,9 @@ class AiRecommendationServiceTest {
         return new MealPlanContext(null, null, 2000, Map.of(), Map.of());
     }
 
-    private MealPlanRecommendationResponse sampleResponse() {
+    private MealPlanGenerationResult sampleResult() {
         DailyMealPlan plan = new DailyMealPlan(2000, "MAINTENANCE", Collections.emptyList());
-        return new MealPlanRecommendationResponse(
+        MealPlanRecommendationResponse response = new MealPlanRecommendationResponse(
                 "COMPLETE",
                 "Plano equilibrado.",
                 plan,
@@ -85,11 +82,12 @@ class AiRecommendationServiceTest {
                 "gemini",
                 "gemini-2.0-flash"
         );
+        return new MealPlanGenerationResult(response, sampleContext());
     }
 
-    private MealPlanRecommendationResponse fallbackResponse() {
+    private MealPlanGenerationResult fallbackResult() {
         DailyMealPlan plan = new DailyMealPlan(2000, "MAINTENANCE", Collections.emptyList());
-        return new MealPlanRecommendationResponse(
+        MealPlanRecommendationResponse response = new MealPlanRecommendationResponse(
                 "PARTIAL",
                 "Plano alimentar gerado com sucesso. O complemento da IA está temporariamente indisponível.",
                 plan,
@@ -99,6 +97,7 @@ class AiRecommendationServiceTest {
                 "fallback",
                 "none"
         );
+        return new MealPlanGenerationResult(response, sampleContext());
     }
 
     private Recommendation savedRecommendation(User owner, Recommendation.RecommendationStatus status) {
@@ -120,8 +119,7 @@ class AiRecommendationServiceTest {
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
             when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
                     .thenReturn(Collections.emptyList());
-            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResponse());
-            when(mealPlanEngine.buildContext("lucas@email.com")).thenReturn(sampleContext());
+            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResult());
             when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> {
                 Recommendation r = inv.getArgument(0);
                 r.setId(1);
@@ -144,8 +142,7 @@ class AiRecommendationServiceTest {
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
             when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
                     .thenReturn(Collections.emptyList());
-            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResponse());
-            when(mealPlanEngine.buildContext("lucas@email.com")).thenReturn(sampleContext());
+            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResult());
             when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> inv.getArgument(0));
 
             Recommendation result = aiRecommendationService.generateAndSave("lucas@email.com");
@@ -162,8 +159,7 @@ class AiRecommendationServiceTest {
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
             when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
                     .thenReturn(Collections.emptyList());
-            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(fallbackResponse());
-            when(mealPlanEngine.buildContext("lucas@email.com")).thenReturn(sampleContext());
+            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(fallbackResult());
             when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> inv.getArgument(0));
 
             Recommendation result = aiRecommendationService.generateAndSave("lucas@email.com");
@@ -180,8 +176,7 @@ class AiRecommendationServiceTest {
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
             when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
                     .thenReturn(List.of(existing));
-            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResponse());
-            when(mealPlanEngine.buildContext("lucas@email.com")).thenReturn(sampleContext());
+            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResult());
             when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> inv.getArgument(0));
 
             aiRecommendationService.generateAndSave("lucas@email.com");
@@ -198,8 +193,7 @@ class AiRecommendationServiceTest {
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
             when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
                     .thenReturn(List.of(existing));
-            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResponse());
-            when(mealPlanEngine.buildContext("lucas@email.com")).thenReturn(sampleContext());
+            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResult());
             when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> inv.getArgument(0));
 
             aiRecommendationService.generateAndSave("lucas@email.com");
@@ -214,13 +208,26 @@ class AiRecommendationServiceTest {
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
             when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
                     .thenReturn(Collections.emptyList());
-            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResponse());
-            when(mealPlanEngine.buildContext("lucas@email.com")).thenReturn(sampleContext());
+            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResult());
             when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> inv.getArgument(0));
 
             aiRecommendationService.generateAndSave("lucas@email.com");
 
             verify(recommendationRepository).saveAll(Collections.emptyList());
+        }
+
+        @Test
+        @DisplayName("should call mealPlanAiService.generate exactly once per recommendation generation")
+        void shouldCallGenerateExactlyOnce() {
+            when(userService.findByEmail("lucas@email.com")).thenReturn(user);
+            when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
+                    .thenReturn(Collections.emptyList());
+            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResult());
+            when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            aiRecommendationService.generateAndSave("lucas@email.com");
+
+            verify(mealPlanAiService, times(1)).generate("lucas@email.com");
         }
     }
 
