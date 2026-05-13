@@ -46,7 +46,6 @@ public class MealPlanEngine {
     private final FoodFilterService foodFilterService;
     private final FoodCurationService foodCurationService;
     private final MealSuitabilityService mealSuitabilityService;
-    private final FoodDisplayNameService foodDisplayNameService;
     private final MealDistributor mealDistributor;
     private final FoodSelector foodSelector;
 
@@ -167,7 +166,7 @@ public class MealPlanEngine {
         List<MealPlanFoodItem> items = build.items().stream()
                 .map(p -> new MealPlanFoodItem(
                         p.foodId(), p.name(),
-                        foodDisplayNameService.generateDisplayName(p.name()),
+                        p.displayName(),
                         p.category(), p.portionGrams(),
                         BigDecimal.valueOf(p.calories()),
                         BigDecimal.valueOf(p.protein()),

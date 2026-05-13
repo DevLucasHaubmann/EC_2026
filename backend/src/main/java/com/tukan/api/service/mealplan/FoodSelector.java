@@ -157,7 +157,7 @@ public class FoodSelector {
             totalFat += fat;
 
             portions.add(new FoodPortionBuild(
-                    food.getId(), food.getName(), food.getCategory(),
+                    food.getId(), food.getName(), food.getDisplayName(), food.getCategory(),
                     portion, round(cal), round(prot), round(carbs), round(fat), round(fiber)));
         }
 
@@ -190,6 +190,7 @@ public class FoodSelector {
     public record FoodPortionBuild(
             Integer foodId,
             String name,
+            String displayName,
             String category,
             BigDecimal portionGrams,
             double calories,
