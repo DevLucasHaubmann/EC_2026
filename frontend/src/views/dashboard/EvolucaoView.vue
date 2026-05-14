@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import MockDataBanner from '../../components/ui/MockDataBanner.vue';
 
 // RF014: Histórico de peso para o gráfico (Tela 07 do PDF)
 const historicoPeso = ref([
@@ -39,6 +40,8 @@ const registrarPeso = () => {
 <template>
   <div class="evolucao-page">
     <main class="evolucao-content">
+      <MockDataBanner />
+
       <!-- Cabeçalho (Tela 07) -->
       <header class="page-header">
         <span class="category-tag">Analytics & Performance</span>

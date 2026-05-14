@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from "../../stores/auth";
+import MockDataBanner from '../../components/ui/MockDataBanner.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -56,6 +57,8 @@ const logout = () => authStore.logout();
     </nav>
 
     <main class="content-container">
+      <MockDataBanner />
+
       <!-- Cabeçalho da Página -->
       <header class="page-intro">
         <span class="intro-tag">Log de Consumo</span>

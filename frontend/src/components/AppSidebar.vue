@@ -7,10 +7,10 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const links = [
-  { name: 'dashboard', label: 'Dashboard' },
-  { name: 'dieta',     label: 'Minha Dieta' },
-  { name: 'perfil',    label: 'Perfil' },
-  { name: 'evolucao',  label: 'Evolução' },
+  { name: 'dashboard', label: 'Dashboard',   wip: false },
+  { name: 'dieta',     label: 'Minha Dieta', wip: false },
+  { name: 'perfil',    label: 'Perfil',      wip: false },
+  { name: 'evolucao',  label: 'Evolução',    wip: true  },
 ]
 
 const logout = async () => {
@@ -34,6 +34,7 @@ const logout = async () => {
         :class="{ active: route.name === link.name }"
       >
         {{ link.label }}
+        <span v-if="link.wip" class="nav-wip-badge">Em dev.</span>
       </RouterLink>
       <RouterLink
         v-if="authStore.isAdmin"
@@ -117,6 +118,22 @@ const logout = async () => {
 .nav-link.active {
   background: rgba(16, 185, 129, 0.12);
   color: var(--accent);
+}
+
+.nav-wip-badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 5px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+  line-height: 1.4;
 }
 
 .nav-link-admin {
