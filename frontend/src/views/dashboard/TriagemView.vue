@@ -124,7 +124,7 @@ const finalizarTriagem = async () => {
     await aiService.generateNew();
     router.push({ name: 'dieta' });
   } catch (error) {
-    console.error(error);
+    console.error('Triagem submission failed:', error instanceof Error ? error.message : String(error));
     erroSubmissao.value = 'Ocorreu um erro ao salvar seus dados. Tente novamente.';
   } finally {
     carregando.value = false;

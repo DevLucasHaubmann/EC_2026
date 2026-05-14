@@ -49,7 +49,8 @@ public class MealPlanAiService {
             );
             return new MealPlanGenerationResult(response, context);
         } catch (Exception e) {
-            log.error("Falha ao enriquecer plano alimentar com IA. Retornando plano sem complemento da IA.", e);
+            log.error("AI meal plan enrichment failed, falling back to minimal plan: errorType={}",
+                    e.getClass().getSimpleName());
             return buildFallbackResult(plan, context);
         }
     }

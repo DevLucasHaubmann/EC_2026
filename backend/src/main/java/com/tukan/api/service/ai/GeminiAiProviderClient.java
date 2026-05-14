@@ -42,7 +42,7 @@ public class GeminiAiProviderClient implements AiProviderClient {
             String content = extractText(response);
             return new AiProviderResult(content, "gemini", gemini.getModel());
         } catch (Exception e) {
-            throw new AiProviderException("Falha na comunicação com o provider Gemini: " + e.getMessage(), e);
+            throw new AiProviderException("Falha na comunicação com o provider Gemini.", e);
         }
     }
 
