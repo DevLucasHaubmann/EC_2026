@@ -8,6 +8,9 @@ public record AiAssessmentContext(
         @JsonProperty("goal")
         String goal,
 
+        @JsonProperty("dietType")
+        String dietType,
+
         @JsonProperty("dietaryRestrictions")
         List<String> dietaryRestrictions,
 

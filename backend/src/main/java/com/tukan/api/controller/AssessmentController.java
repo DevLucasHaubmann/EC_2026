@@ -27,9 +27,10 @@ public class AssessmentController {
     private final AssessmentService assessmentService;
     private final OnboardingService onboardingService;
 
-    // ── Self-service (qualquer usuário autenticado) ───────────────
+    // ── Self-service (apenas usuário final; ADMIN não possui triagem própria) ──
 
     @PostMapping("/me")
+    @PreAuthorize("hasAuthority('USER')")
     public ResponseEntity<AssessmentCreatedResponse> createOwn(
             @RequestBody @Valid CreateAssessmentRequest request,
             Authentication authentication) {
@@ -40,12 +41,14 @@ public class AssessmentController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize("hasAuthority('USER')")
     public ResponseEntity<AssessmentResponse> findOwn(Authentication authentication) {
         return ResponseEntity.ok(
                 AssessmentResponse.from(assessmentService.findOwn(authentication.getName())));
     }
 
     @PutMapping("/me")
+    @PreAuthorize("hasAuthority('USER')")
     public ResponseEntity<AssessmentResponse> updateOwn(
             @RequestBody @Valid UpdateAssessmentRequest request,
             Authentication authentication) {

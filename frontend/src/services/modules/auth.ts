@@ -3,7 +3,7 @@
  * Handles all authentication-related API calls
  */
 
-import { api } from '../http/api'
+import { api } from '@/services/http/api'
 import type { LoginRequest, RegisterRequest, RefreshRequest, AuthResponse } from '@/types/auth'
 
 class AuthService {

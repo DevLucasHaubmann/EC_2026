@@ -4,8 +4,6 @@ import com.tukan.api.dto.UpdateUserRequest;
 import com.tukan.api.entity.User;
 import com.tukan.api.exception.BusinessException;
 import com.tukan.api.util.EmailUtils;
-import com.tukan.api.repository.NutritionalProfileRepository;
-import com.tukan.api.repository.AssessmentRepository;
 import com.tukan.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,11 +20,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserSessionService userSessionService;
-    private final NutritionalProfileRepository nutritionalProfileRepository;
-    private final AssessmentRepository assessmentRepository;
+    private final UserDeletionService userDeletionService;
 
     public Page<User> findAll(Pageable pageable) {
         return userRepository.findAll(pageable);
+    }
+
+    /**
+     * Admin search by name or email. Expects a non-blank term (the controller
+     * routes blank queries to {@link #findAll(Pageable)} to preserve the
+     * existing unfiltered listing behavior).
+     */
+    public Page<User> search(String term, Pageable pageable) {
+        return userRepository.searchByNameOrEmail(term.trim(), pageable);
     }
 
     public User findById(Integer id) {
@@ -40,9 +46,18 @@ public class UserService {
     }
 
     @Transactional
-    public User update(Integer id, UpdateUserRequest request) {
+    public User update(Integer id, UpdateUserRequest request, String authenticatedEmail) {
+        User authenticatedUser = userRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new BusinessException("Usuário autenticado não encontrado.", HttpStatus.NOT_FOUND));
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Usuário não encontrado.", HttpStatus.NOT_FOUND));
+
+        boolean isSelfUpdate = authenticatedUser.getId().equals(user.getId());
+
+        if (isSelfUpdate) {
+            rejectDestructiveSelfUpdate(request);
+        }
 
         if (request.name() != null && !request.name().isBlank()) {
             user.setName(request.name().trim());
@@ -70,6 +85,21 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    /**
+     * Prevents an admin from demoting their own role or deactivating their own account.
+     * Name and email changes on self are non-destructive and remain allowed.
+     */
+    private void rejectDestructiveSelfUpdate(UpdateUserRequest request) {
+        if (request.status() != null && request.status() != User.UserState.ACTIVE) {
+            throw new BusinessException(
+                    "Você não pode executar esta ação contra a própria conta.", HttpStatus.FORBIDDEN);
+        }
+        if (request.type() != null && request.type() != User.UserType.ADMIN) {
+            throw new BusinessException(
+                    "Você não pode executar esta ação contra a própria conta.", HttpStatus.FORBIDDEN);
+        }
+    }
+
     @Transactional
     public void delete(Integer targetUserId, String authenticatedEmail) {
         User authenticatedUser = userRepository.findByEmail(authenticatedEmail)
@@ -81,20 +111,26 @@ public class UserService {
         boolean isSelfDeletion = authenticatedUser.getId().equals(targetUser.getId());
 
         if (isSelfDeletion) {
-            throw new BusinessException("Um administrador não pode excluir a própria conta.", HttpStatus.FORBIDDEN);
+            throw new BusinessException("Você não pode executar esta ação contra a própria conta.", HttpStatus.FORBIDDEN);
         }
 
-        assessmentRepository.deleteByUserId(targetUserId);
-        nutritionalProfileRepository.deleteByUserId(targetUserId);
-        userSessionService.deleteAllByUserId(targetUserId);
-        userRepository.delete(targetUser);
+        userDeletionService.deleteUserAndOwnedData(targetUserId);
     }
 
     @Transactional
-    public void revokeAllSessions(Integer id) {
+    public void revokeAllSessions(Integer id, String authenticatedEmail) {
+        User authenticatedUser = userRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new BusinessException("Usuário autenticado não encontrado.", HttpStatus.NOT_FOUND));
+
         if (!userRepository.existsById(id)) {
             throw new BusinessException("Usuário não encontrado.", HttpStatus.NOT_FOUND);
         }
+
+        if (authenticatedUser.getId().equals(id)) {
+            throw new BusinessException(
+                    "Você não pode executar esta ação contra a própria conta.", HttpStatus.FORBIDDEN);
+        }
+
         userSessionService.revokeAllSessions(id);
     }
 

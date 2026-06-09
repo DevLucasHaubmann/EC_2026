@@ -1,60 +1,86 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../../stores/auth'
-import { adminUserService } from '../../services/modules/adminUser'
+import { useAuthStore } from '@/stores/auth'
+import { useMeStore } from '@/stores/me'
+import { adminUserService } from '@/services/modules/adminUser'
 import AdminUserModal from './AdminUserModal.vue'
-
-interface AdminUser {
-  id: number
-  name: string
-  email: string
-  type: 'ADMIN' | 'USER'
-  status: 'ACTIVE' | 'BLOCKED' | 'BANNED'
-}
-
-interface Page<T> {
-  content: T[]
-  totalElements: number
-  totalPages: number
-  number: number
-  size: number
-}
+import type { AdminUser, Page } from '@/types/admin'
+import { ADMIN_MESSAGES } from '@/constants/messages'
+import { useToast } from '@/composables/useToast'
+import { useModal } from '@/composables/useModal'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const meStore = useMeStore()
+const toast = useToast()
+const modal = useModal()
 
 const usuarios = ref<AdminUser[]>([])
 const totalElements = ref(0)
 const currentPage = ref(0)
 const pageSize = 20
 
+const termoBusca = ref('')
+
 const loading = ref(false)
 const erro = ref<string | null>(null)
 
 const loadingAcao = ref<number | null>(null)
-const sucesso = ref<string | null>(null)
 
-const confirmDelete = ref<AdminUser | null>(null)
 const usuarioSelecionado = ref<AdminUser | null>(null)
 
 const totalAtivos = computed(() => usuarios.value.filter(u => u.status === 'ACTIVE').length)
 const totalBloqueados = computed(() => usuarios.value.filter(u => u.status !== 'ACTIVE').length)
 
+const buscaAtiva = computed(() => termoBusca.value.trim().length > 0)
+const mensagemVazia = computed(() =>
+  buscaAtiva.value
+    ? `Nenhum usuário encontrado para "${termoBusca.value.trim()}".`
+    : ADMIN_MESSAGES.USERS_EMPTY,
+)
+
+// Returns true when the given user is the currently authenticated admin.
+// Used to disable self-action buttons (backend already blocks with 403; this is UI-only).
+function ehProprioAdmin(user: AdminUser): boolean {
+  return meStore.currentUserId !== null && user.id === meStore.currentUserId
+}
+
+// Monotonic request id: with debounced search, an older request can resolve after a
+// newer one. Only the latest request is allowed to write state, so a stale response
+// never overwrites a more recent search/page.
+let requestSeq = 0
+
 async function carregarUsuarios(page = 0) {
+  const requestId = ++requestSeq
   loading.value = true
   erro.value = null
   try {
-    const data: Page<AdminUser> = await adminUserService.findAll(page, pageSize)
+    const data: Page<AdminUser> = await adminUserService.findAll(page, pageSize, termoBusca.value)
+    if (requestId !== requestSeq) return
     usuarios.value = data.content
     totalElements.value = data.totalElements
     currentPage.value = data.number
-  } catch (err: any) {
-    erro.value = err.response?.data?.message ?? 'Erro ao carregar usuários.'
+  } catch (err: unknown) {
+    if (requestId !== requestSeq) return
+    const e = err as { response?: { data?: { message?: string } } }
+    erro.value = e.response?.data?.message ?? ADMIN_MESSAGES.USERS_LOAD_ERROR
   } finally {
-    loading.value = false
+    if (requestId === requestSeq) loading.value = false
   }
 }
+
+// Busca server-side com debounce: cada digitação reinicia o timer e só dispara
+// uma requisição após a pausa, sempre voltando para a primeira página.
+const BUSCA_DEBOUNCE_MS = 350
+let buscaTimer: ReturnType<typeof setTimeout> | undefined
+
+function onBuscaInput() {
+  clearTimeout(buscaTimer)
+  buscaTimer = setTimeout(() => carregarUsuarios(0), BUSCA_DEBOUNCE_MS)
+}
+
+onBeforeUnmount(() => clearTimeout(buscaTimer))
 
 async function alternarStatus(user: AdminUser) {
   const novoStatus = user.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE'
@@ -62,8 +88,10 @@ async function alternarStatus(user: AdminUser) {
   try {
     await adminUserService.update(user.id, { status: novoStatus })
     user.status = novoStatus
-  } catch (err: any) {
-    erro.value = err.response?.data?.message ?? 'Erro ao atualizar status.'
+    toast.success(ADMIN_MESSAGES.USER_STATUS_SUCCESS)
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } }
+    toast.error(e.response?.data?.message ?? ADMIN_MESSAGES.USER_STATUS_ERROR)
   } finally {
     loadingAcao.value = null
   }
@@ -71,42 +99,52 @@ async function alternarStatus(user: AdminUser) {
 
 async function revogarSessoes(user: AdminUser) {
   loadingAcao.value = user.id
-  erro.value = null
-  sucesso.value = null
   try {
     await adminUserService.revokeSessions(user.id)
-    sucesso.value = `Sessões de ${user.name} revogadas com sucesso.`
-  } catch (err: any) {
-    erro.value = err.response?.data?.message ?? 'Erro ao revogar sessões.'
+    toast.success(ADMIN_MESSAGES.SESSION_REVOKE_SUCCESS)
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } }
+    toast.error(e.response?.data?.message ?? ADMIN_MESSAGES.SESSION_REVOKE_ERROR)
   } finally {
     loadingAcao.value = null
   }
 }
 
-async function confirmarDelete() {
-  const user = confirmDelete.value
-  if (!user) return
+function removeUsuarioById(id: number) {
+  usuarios.value = usuarios.value.filter(u => u.id !== id)
+  totalElements.value -= 1
+}
+
+async function deletarUsuario(user: AdminUser) {
+  const confirmed = await modal.open({
+    title: 'Confirmar exclusão',
+    message: `Tem certeza que deseja deletar permanentemente o usuário ${user.name} (${user.email})? Esta ação não pode ser desfeita.`,
+    confirmLabel: 'Deletar',
+    cancelLabel: 'Cancelar',
+    variant: 'danger',
+  })
+  if (!confirmed) return
   loadingAcao.value = user.id
-  confirmDelete.value = null
   try {
     await adminUserService.delete(user.id)
-    usuarios.value = usuarios.value.filter(u => u.id !== user.id)
-    totalElements.value -= 1
-  } catch (err: any) {
-    erro.value = err.response?.data?.message ?? 'Erro ao deletar usuário.'
+    removeUsuarioById(user.id)
+    toast.success(ADMIN_MESSAGES.USER_DELETE_SUCCESS)
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } }
+    toast.error(e.response?.data?.message ?? ADMIN_MESSAGES.USER_DELETE_ERROR)
   } finally {
     loadingAcao.value = null
   }
 }
 
-function statusLabel(status: string) {
+function statusLabel(status: AdminUser['status']) {
   if (status === 'ACTIVE') return 'Ativo'
   if (status === 'BLOCKED') return 'Bloqueado'
   if (status === 'BANNED') return 'Banido'
   return status
 }
 
-function statusClass(status: string) {
+function statusClass(status: AdminUser['status']) {
   if (status === 'ACTIVE') return 'ativo'
   if (status === 'BLOCKED') return 'bloqueado'
   return 'banido'
@@ -119,24 +157,33 @@ function onUsuarioAtualizado(updated: AdminUser) {
 }
 
 function onUsuarioDeletado(userId: number) {
-  usuarios.value = usuarios.value.filter(u => u.id !== userId)
-  totalElements.value -= 1
+  removeUsuarioById(userId)
   usuarioSelecionado.value = null
 }
 
-const voltar = () => router.push('/dashboard')
+async function logout() {
+  meStore.clear()
+  await authStore.logout()
+  router.push({ name: 'auth' })
+}
 
-onMounted(() => carregarUsuarios(0))
+onMounted(async () => {
+  await meStore.load()
+  carregarUsuarios(0)
+})
 </script>
 
 <template>
   <div class="admin-wrapper">
     <nav class="admin-nav">
       <div class="nav-content">
-        <button class="btn-back" @click="voltar">
-          <span class="chevron-left"></span> Dashboard Principal
-        </button>
-        <span class="admin-tag">Painel Administrativo</span>
+        <div class="nav-brand">
+          Tukan <span class="nav-brand-dot"></span>
+        </div>
+        <div class="nav-right">
+          <span class="admin-tag">Painel Administrativo</span>
+          <button class="btn-sair" @click="logout">Sair</button>
+        </div>
       </div>
     </nav>
 
@@ -158,12 +205,6 @@ onMounted(() => carregarUsuarios(0))
         </article>
       </section>
 
-      <!-- Sucesso -->
-      <div v-if="sucesso" class="sucesso-banner">
-        {{ sucesso }}
-        <button class="erro-fechar" @click="sucesso = null">✕</button>
-      </div>
-
       <!-- Erro global -->
       <div v-if="erro" class="erro-banner">
         {{ erro }}
@@ -173,19 +214,32 @@ onMounted(() => carregarUsuarios(0))
       <!-- Tabela de usuários -->
       <section class="users-section">
         <div class="card-header">
-          <h3>Controle de Acessos</h3>
-          <p>Gerencie permissões e sessões dos usuários</p>
+          <div class="card-header-text">
+            <h3>Controle de Acessos</h3>
+            <p>Gerencie permissões e sessões dos usuários</p>
+          </div>
+          <div class="search-box">
+            <span class="search-icon" aria-hidden="true"></span>
+            <input
+              v-model="termoBusca"
+              type="search"
+              class="search-input"
+              placeholder="Buscar por nome ou email..."
+              aria-label="Buscar usuários por nome ou email"
+              @input="onBuscaInput"
+            />
+          </div>
         </div>
 
         <!-- Loading -->
         <div v-if="loading" class="estado-centro">
           <div class="spinner"></div>
-          <p>Carregando usuários…</p>
+          <p>{{ ADMIN_MESSAGES.LOADING_USERS }}</p>
         </div>
 
         <!-- Vazio -->
         <div v-else-if="!erro && usuarios.length === 0" class="estado-centro">
-          <p class="estado-texto">Nenhum usuário encontrado.</p>
+          <p class="estado-texto">{{ mensagemVazia }}</p>
         </div>
 
         <!-- Tabela -->
@@ -218,22 +272,25 @@ onMounted(() => carregarUsuarios(0))
                 <td>
                   <div class="action-btns">
                     <button
-                      :disabled="loadingAcao === user.id || user.status === 'BANNED'"
+                      :disabled="loadingAcao === user.id || user.status === 'BANNED' || ehProprioAdmin(user)"
+                      :title="ehProprioAdmin(user) ? 'Ação indisponível na própria conta' : undefined"
                       @click="alternarStatus(user)"
                       class="btn-table danger"
                     >
                       {{ user.status === 'ACTIVE' ? 'Bloquear' : 'Desbloquear' }}
                     </button>
                     <button
-                      :disabled="loadingAcao === user.id"
+                      :disabled="loadingAcao === user.id || ehProprioAdmin(user)"
+                      :title="ehProprioAdmin(user) ? 'Ação indisponível na própria conta' : undefined"
                       @click="revogarSessoes(user)"
                       class="btn-table"
                     >
                       Revogar Sessões
                     </button>
                     <button
-                      :disabled="loadingAcao === user.id"
-                      @click="confirmDelete = user"
+                      :disabled="loadingAcao === user.id || ehProprioAdmin(user)"
+                      :title="ehProprioAdmin(user) ? 'Ação indisponível na própria conta' : undefined"
+                      @click="deletarUsuario(user)"
                       class="btn-table delete"
                     >
                       Deletar
@@ -267,26 +324,12 @@ onMounted(() => carregarUsuarios(0))
     <AdminUserModal
       v-if="usuarioSelecionado"
       :user="usuarioSelecionado"
+      :is-self="ehProprioAdmin(usuarioSelecionado)"
       @close="usuarioSelecionado = null"
       @updated="onUsuarioAtualizado"
       @deleted="onUsuarioDeletado"
     />
 
-    <!-- Modal de confirmação de delete -->
-    <div v-if="confirmDelete" class="modal-overlay" @click.self="confirmDelete = null">
-      <div class="modal-card">
-        <h3>Confirmar exclusão</h3>
-        <p>
-          Tem certeza que deseja deletar permanentemente o usuário
-          <strong>{{ confirmDelete.name }}</strong> ({{ confirmDelete.email }})?
-          Esta ação não pode ser desfeita.
-        </p>
-        <div class="modal-actions">
-          <button class="btn-modal-cancel" @click="confirmDelete = null">Cancelar</button>
-          <button class="btn-modal-confirm" @click="confirmarDelete">Deletar</button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -295,7 +338,6 @@ onMounted(() => carregarUsuarios(0))
   --bg: #0f172a; --card: #1e293b; --emerald: #10b981; --text-dim: #94a3b8;
   --amber: #f59e0b; --amber-dim: rgba(245, 158, 11, 0.15); --amber-border: rgba(245, 158, 11, 0.35);
   min-height: 100vh; background-color: var(--bg); color: white; font-family: 'Inter', sans-serif;
-  border-left: 3px solid var(--amber);
 }
 
 /* NAVBAR */
@@ -305,16 +347,43 @@ onMounted(() => carregarUsuarios(0))
   box-shadow: 0 1px 20px rgba(245, 158, 11, 0.08);
   position: sticky; top: 0; z-index: 100;
 }
-.nav-content { max-width: 1200px; margin: 0 auto; padding: 1.2rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-.btn-back { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-.btn-back:hover { color: var(--amber); }
-.chevron-left { width: 7px; height: 7px; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
+.nav-content {
+  max-width: 1200px; margin: 0 auto; padding: 1.2rem 1.5rem;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.nav-brand {
+  font-weight: 900; font-size: 1.1rem; text-transform: uppercase;
+  letter-spacing: 2px; color: white;
+  display: flex; align-items: center; gap: 6px;
+}
+.nav-brand-dot {
+  width: 7px; height: 7px; background: var(--amber);
+  border-radius: 50%; display: inline-block;
+}
+.nav-right {
+  display: flex; align-items: center; gap: 1rem;
+}
 .admin-tag {
   font-weight: 800; text-transform: uppercase; letter-spacing: 2px; font-size: 0.7rem;
   color: var(--amber);
   background: var(--amber-dim);
   border: 1px solid var(--amber-border);
   padding: 4px 12px; border-radius: 20px;
+}
+.btn-sair {
+  background: rgba(248, 113, 113, 0.08);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.15);
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.btn-sair:hover {
+  background: rgba(248, 113, 113, 0.18);
+  color: #fca5a5;
 }
 
 /* CONTENT */
@@ -327,15 +396,27 @@ onMounted(() => carregarUsuarios(0))
 .stat-card p { font-size: 2.2rem; font-weight: 900; letter-spacing: -1px; color: var(--amber); }
 
 /* ERRO */
-.sucesso-banner { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #6ee7b7; padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
 .erro-banner { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
 .erro-fechar { background: transparent; border: none; color: inherit; cursor: pointer; font-size: 1rem; }
 
 /* USERS */
 .users-section { background: var(--card); border-radius: 24px; padding: 2.5rem; border: 1px solid rgba(255,255,255,0.05); }
-.card-header { margin-bottom: 2.5rem; }
+.card-header { margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: flex-end; gap: 1.5rem; flex-wrap: wrap; }
 .card-header h3 { font-size: 1.4rem; font-weight: 800; }
 .card-header p { color: var(--text-dim); font-size: 0.9rem; }
+
+/* SEARCH */
+.search-box { position: relative; flex: 0 1 320px; min-width: 220px; }
+.search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; border: 2px solid var(--text-dim); border-radius: 50%; pointer-events: none; }
+.search-icon::after { content: ''; position: absolute; top: 11px; left: 9px; width: 6px; height: 2px; background: var(--text-dim); transform: rotate(45deg); }
+.search-input {
+  width: 100%; box-sizing: border-box; padding: 10px 14px 10px 38px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; color: white; font-size: 0.875rem; font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.search-input::placeholder { color: var(--text-dim); }
+.search-input:focus { outline: none; border-color: var(--amber-border); background: rgba(255,255,255,0.06); }
 
 /* ESTADOS */
 .estado-centro { display: flex; flex-direction: column; align-items: center; padding: 4rem 0; gap: 1rem; color: var(--text-dim); }
@@ -380,17 +461,6 @@ onMounted(() => carregarUsuarios(0))
 .btn-page:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
 .btn-page:disabled { opacity: 0.3; cursor: not-allowed; }
 .page-info { font-size: 0.85rem; color: var(--text-dim); }
-
-/* MODAL */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 200; }
-.modal-card { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 2.5rem; max-width: 420px; width: 90%; }
-.modal-card h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 1rem; }
-.modal-card p { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; margin-bottom: 2rem; }
-.modal-card strong { color: white; }
-.modal-actions { display: flex; gap: 1rem; justify-content: flex-end; }
-.btn-modal-cancel { background: rgba(255,255,255,0.05); border: none; color: var(--text-dim); padding: 0.7rem 1.5rem; border-radius: 10px; font-weight: 700; cursor: pointer; }
-.btn-modal-confirm { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 0.7rem 1.5rem; border-radius: 10px; font-weight: 800; cursor: pointer; }
-.btn-modal-confirm:hover { background: rgba(239, 68, 68, 0.25); }
 
 @media (max-width: 1000px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 600px) { .stats-grid { grid-template-columns: 1fr; } .action-btns { flex-direction: column; } }

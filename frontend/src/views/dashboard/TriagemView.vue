@@ -1,12 +1,60 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { profileService } from '@/services/modules/profile';
 import { assessmentService } from '@/services/modules/assessment';
-import { aiService } from '@/services/modules/aiRecommendation';
 import { meService } from '@/services/modules/me';
+import { HEALTH_CONDITION_OPTIONS, ALLERGY_OPTIONS, NUTRITIONAL_GOAL_OPTIONS, ACTIVITY_LEVEL_OPTIONS, DIET_TYPE_OPTIONS, isRestrictiveDiet } from '@/constants/assessmentOptions';
+import { toggleArrayItem } from '@/utils/array';
+import { ASSESSMENT_MESSAGES } from '@/constants/messages';
+import { VALIDATION_MESSAGES } from '@/constants/messages/validationMessages';
+import { useModal } from '@/composables/useModal';
+import { useToast } from '@/composables/useToast';
+import { useDietGeneration } from '@/composables/useDietGeneration';
+import DietGenerationProgress from '@/components/ui/DietGenerationProgress.vue';
+import type { CreateProfileRequest } from '@/types/profile';
+import type { CreateAssessmentRequest } from '@/types/assessment';
+import type { Dashboard, DietType } from '@/types/api';
 
 const router = useRouter();
+const modal = useModal();
+const toast = useToast();
+
+const {
+  status: generationStatus,
+  error: generationError,
+  currentMessage: generationMessage,
+  recommendationId: generationRecommendationId,
+  start: startGeneration,
+} = useDietGeneration();
+
+// COMPLETED is the only success exit: navigate to the diet, passing the id when known so
+// DietaView can fetch it directly (falling back to getLatest if the id is absent/unsupported).
+watch(generationStatus, (status) => {
+  if (status !== 'COMPLETED') return;
+  toast.success(ASSESSMENT_MESSAGES.CREATE_SUCCESS);
+  const rid = generationRecommendationId.value;
+  router.push({ name: 'dieta', query: rid != null ? { rid: String(rid) } : {} });
+});
+
+const MIN_WEIGHT_KG = 20
+const MAX_WEIGHT_KG = 500
+const MIN_HEIGHT_CM = 50
+const MAX_HEIGHT_CM = 300
+const MAX_AGE_YEARS = 120
+
+function todayDateString(): string {
+  return new Date().toISOString().substring(0, 10)
+}
+
+function minBirthDateString(): string {
+  const d = new Date()
+  d.setFullYear(d.getFullYear() - MAX_AGE_YEARS)
+  return d.toISOString().substring(0, 10)
+}
+
+const todayDate = todayDateString()
+const minBirthDate = minBirthDateString()
 
 // Estado de carregamento inicial (verificação de /me)
 const inicializando = ref(true);
@@ -19,25 +67,8 @@ const temProfile = ref(false);
 const etapaInicial = ref(1);
 
 const carregando = ref(false);
-const erroSubmissao = ref<string | null>(null);
 const etapaAtual = ref(1);
 
-const listaCondicoes = [
-  'Diabetes Tipo 1', 'Diabetes Tipo 2', 'Hipertensão', 'Colesterol Alto',
-  'Gastrite', 'Anemia', 'Hipotireoidismo', 'Hipertireoidismo', 'Síndrome do Intestino Irritável',
-];
-const listaAlergias = [
-  'Glúten', 'Lactose', 'Frutos do Mar', 'Amendoim', 'Ovo',
-  'Soja', 'Proteína do Leite (APLV)', 'Trigo', 'Nozes',
-];
-
-const OBJETIVOS = [
-  { value: 'WEIGHT_LOSS',         label: 'Emagrecimento',         desc: 'Redução de gordura com déficit calórico.' },
-  { value: 'MUSCLE_GAIN',         label: 'Ganho de Massa',         desc: 'Aumento de volume muscular com superávit.' },
-  { value: 'MAINTENANCE',         label: 'Manutenção',             desc: 'Manter o peso e a composição atual.' },
-  { value: 'DIETARY_REEDUCATION', label: 'Reeducação Alimentar',   desc: 'Melhora dos hábitos alimentares.' },
-  { value: 'SPORTS_PERFORMANCE',  label: 'Performance Esportiva',  desc: 'Otimização para rendimento atlético.' },
-];
 
 const form = ref({
   dataNascimento: '',
@@ -58,22 +89,83 @@ const totalEtapas = computed(() => 4 - etapaInicial.value + 1)
 // Número relativo da etapa atual para exibição ("Etapa 1 de 3" em vez de "Etapa 2 de 4")
 const etapaRelativa = computed(() => etapaAtual.value - etapaInicial.value + 1)
 
-const proximaEtapa = () => { if (etapaValida.value) etapaAtual.value++; };
-const etapaAnterior = () => { if (etapaAtual.value > etapaInicial.value) etapaAtual.value--; };
-const cancelar = () => { if (confirm('Deseja sair? Seus dados não serão salvos.')) router.push('/dashboard'); };
+const tentouAvancar = ref(false)
 
-const toggleItem = (lista: 'condicoesSaude' | 'alergias', item: string) => {
-  const index = form.value[lista].indexOf(item);
-  if (index > -1) form.value[lista].splice(index, 1);
-  else form.value[lista].push(item);
+const proximaEtapa = () => {
+  if (etapaValida.value) {
+    tentouAvancar.value = false
+    etapaAtual.value++
+    return
+  }
+  if (etapaAtual.value === 2) {
+    toast.warning(VALIDATION_MESSAGES.REQUIRED_NUTRITION_GOAL)
+    return
+  }
+  if (etapaAtual.value === 1) tentouAvancar.value = true
+};
+const etapaAnterior = () => { if (etapaAtual.value > etapaInicial.value) etapaAtual.value--; };
+const cancelar = async () => {
+  const confirmed = await modal.open({
+    title: 'Sair da triagem?',
+    message: ASSESSMENT_MESSAGES.EXIT_CONFIRM,
+    confirmLabel: 'Sair',
+    cancelLabel: 'Continuar',
+    variant: 'warning',
+  });
+  if (confirmed) router.push('/dashboard');
 };
 
+function isPastOrToday(dateStr: string): boolean {
+  return !!dateStr && dateStr <= todayDateString()
+}
+
+function isWithinRange(value: number | null, min: number, max: number): boolean {
+  return value !== null && value >= min && value <= max
+}
+
 const etapaValida = computed(() => {
-  if (etapaAtual.value === 1) return form.value.dataNascimento && form.value.genero && form.value.peso && form.value.altura;
-  if (etapaAtual.value === 2) return !!form.value.objetivo;
-  if (etapaAtual.value === 3) return form.value.qtdRefeicoes >= 3;
-  return true;
-});
+  if (etapaAtual.value === 1) {
+    return (
+      !!form.value.dataNascimento &&
+      isPastOrToday(form.value.dataNascimento) &&
+      form.value.dataNascimento >= minBirthDate &&
+      !!form.value.genero &&
+      isWithinRange(form.value.peso, MIN_WEIGHT_KG, MAX_WEIGHT_KG) &&
+      isWithinRange(form.value.altura, MIN_HEIGHT_CM, MAX_HEIGHT_CM)
+    )
+  }
+  if (etapaAtual.value === 2) return !!form.value.objetivo
+  if (etapaAtual.value === 3) return form.value.qtdRefeicoes >= 3
+  return true
+})
+
+const dateOfBirthError = computed((): string | null => {
+  const d = form.value.dataNascimento
+  if (!d) return VALIDATION_MESSAGES.REQUIRED_BIRTHDATE
+  if (d > todayDateString()) return VALIDATION_MESSAGES.PAST_BIRTHDATE
+  if (d < minBirthDate) return VALIDATION_MESSAGES.BIRTHDATE_TOO_OLD
+  return null
+})
+
+const genderError = computed((): string | null =>
+  !form.value.genero ? VALIDATION_MESSAGES.REQUIRED_GENDER : null
+)
+
+const weightError = computed((): string | null =>
+  !isWithinRange(form.value.peso, MIN_WEIGHT_KG, MAX_WEIGHT_KG)
+    ? VALIDATION_MESSAGES.WEIGHT_RANGE
+    : null
+)
+
+const heightError = computed((): string | null =>
+  !isWithinRange(form.value.altura, MIN_HEIGHT_CM, MAX_HEIGHT_CM)
+    ? VALIDATION_MESSAGES.HEIGHT_RANGE
+    : null
+)
+
+const mostrarCautelaDieta = computed(() =>
+  isRestrictiveDiet(form.value.preferenciaAlimentar as DietType)
+)
 
 onMounted(async () => {
   try {
@@ -92,44 +184,67 @@ onMounted(async () => {
       etapaAtual.value = 2
     }
   } catch {
-    erroInicial.value = 'Não foi possível verificar seu cadastro. Tente novamente.'
+    erroInicial.value = ASSESSMENT_MESSAGES.LOAD_ERROR
   } finally {
     inicializando.value = false
   }
 })
 
-const finalizarTriagem = async () => {
-  erroSubmissao.value = null
-  try {
-    carregando.value = true;
-
-    if (!temProfile.value) {
-      await profileService.createOwn({
-        dateOfBirth: form.value.dataNascimento,
-        gender: form.value.genero.toUpperCase(),
-        weightKg: form.value.peso,
-        heightCm: form.value.altura,
-        activityLevel: form.value.nivelAtividade
-      });
-    }
-
-    await assessmentService.createOwn({
-      goal: form.value.objetivo,
-      dietaryRestrictions: form.value.preferenciaAlimentar,
-      healthConditions: form.value.condicoesSaude.join(', '),
-      allergies: form.value.alergias.join(', '),
-      mealsPerDay: form.value.qtdRefeicoes,
-      targetWeightKg: form.value.pesoAlvo ?? null,
-    });
-    await aiService.generateNew();
-    router.push({ name: 'dieta' });
-  } catch (error) {
-    console.error(error);
-    erroSubmissao.value = 'Ocorreu um erro ao salvar seus dados. Tente novamente.';
-  } finally {
-    carregando.value = false;
+function buildProfilePayload(): CreateProfileRequest | null {
+  const { dataNascimento, genero, peso, altura, nivelAtividade } = form.value
+  if (
+    !isPastOrToday(dataNascimento) ||
+    dataNascimento < minBirthDate ||
+    !genero ||
+    !isWithinRange(peso, MIN_WEIGHT_KG, MAX_WEIGHT_KG) ||
+    !isWithinRange(altura, MIN_HEIGHT_CM, MAX_HEIGHT_CM)
+  ) {
+    return null
   }
+  return {
+    dateOfBirth: dataNascimento,
+    gender: genero.toUpperCase() as Dashboard.Gender,
+    weightKg: peso as number,
+    heightCm: altura as number,
+    activityLevel: nivelAtividade as Dashboard.ActivityLevel,
+  }
+}
+
+function buildAssessmentPayload(): CreateAssessmentRequest {
+  return {
+    goal: form.value.objetivo as Dashboard.NutritionalGoal,
+    dietType: form.value.preferenciaAlimentar as DietType,
+    healthConditions: form.value.condicoesSaude.join(', '),
+    allergies: form.value.alergias.join(', '),
+    mealsPerDay: form.value.qtdRefeicoes,
+    targetWeightKg: form.value.pesoAlvo ?? undefined,
+  }
+}
+
+const finalizarTriagem = async () => {
+  let profilePayload: CreateProfileRequest | null = null
+  if (!temProfile.value) {
+    profilePayload = buildProfilePayload()
+    if (!profilePayload) return
+  }
+  carregando.value = true
+  try {
+    if (profilePayload) await profileService.createOwn(profilePayload)
+    await assessmentService.createOwn(buildAssessmentPayload())
+  } catch (error) {
+    console.error('Triagem submission failed:', error instanceof Error ? error.message : String(error))
+    toast.error(ASSESSMENT_MESSAGES.SAVE_ERROR)
+    return
+  } finally {
+    carregando.value = false
+  }
+  // Profile/assessment are persisted; hand off to the async generation flow (job + SSE).
+  await startGeneration()
 };
+
+// Retry after a FAILED generation: profile/assessment are already saved, so only the
+// generation job is restarted.
+const retryGeneration = () => { startGeneration(); };
 </script>
 
 <template>
@@ -151,12 +266,21 @@ const finalizarTriagem = async () => {
 
     <!-- Verificando cadastro -->
     <div v-if="inicializando" class="triagem-state">
-      <p>Verificando seu cadastro...</p>
+      <p>{{ ASSESSMENT_MESSAGES.LOADING }}</p>
     </div>
 
     <!-- Erro inicial -->
     <div v-else-if="erroInicial" class="triagem-state">
       <p class="state-error">{{ erroInicial }}</p>
+    </div>
+
+    <!-- Geração assíncrona em andamento (job + SSE): status reais, sem percentual falso -->
+    <div v-else-if="generationStatus !== null" class="triagem-state">
+      <DietGenerationProgress
+        :message="generationStatus === 'FAILED' && generationError ? generationError : generationMessage"
+        :failed="generationStatus === 'FAILED'"
+        @retry="retryGeneration"
+      />
     </div>
 
     <!-- Formulário -->
@@ -185,7 +309,8 @@ const finalizarTriagem = async () => {
           <div class="input-grid">
             <div class="field">
               <label>Data de Nascimento</label>
-              <input type="date" v-model="form.dataNascimento" />
+              <input type="date" v-model="form.dataNascimento" :max="todayDate" :min="minBirthDate" />
+              <span v-if="tentouAvancar && dateOfBirthError" class="field-error">{{ dateOfBirthError }}</span>
             </div>
             <div class="field">
               <label>Gênero Biológico</label>
@@ -194,14 +319,17 @@ const finalizarTriagem = async () => {
                 <option value="MALE">Masculino</option>
                 <option value="FEMALE">Feminino</option>
               </select>
+              <span v-if="tentouAvancar && genderError" class="field-error">{{ genderError }}</span>
             </div>
             <div class="field">
               <label>Peso Atual (kg)</label>
-              <input type="number" v-model="form.peso" placeholder="70.0" />
+              <input type="number" v-model="form.peso" placeholder="70.0" :min="MIN_WEIGHT_KG" :max="MAX_WEIGHT_KG" step="0.1" />
+              <span v-if="tentouAvancar && weightError" class="field-error">{{ weightError }}</span>
             </div>
             <div class="field">
               <label>Altura (cm)</label>
-              <input type="number" v-model="form.altura" placeholder="175" />
+              <input type="number" v-model="form.altura" placeholder="175" :min="MIN_HEIGHT_CM" :max="MAX_HEIGHT_CM" step="1" />
+              <span v-if="tentouAvancar && heightError" class="field-error">{{ heightError }}</span>
             </div>
           </div>
         </div>
@@ -212,7 +340,7 @@ const finalizarTriagem = async () => {
           <p class="form-subtitle">Escolha o objetivo que melhor descreve o que você quer alcançar.</p>
           <div class="goal-grid">
             <article
-              v-for="obj in OBJETIVOS"
+              v-for="obj in NUTRITIONAL_GOAL_OPTIONS"
               :key="obj.value"
               class="selectable-card"
               :class="{ active: form.objetivo === obj.value }"
@@ -243,11 +371,7 @@ const finalizarTriagem = async () => {
           <div class="field">
             <label>Nível de Atividade Física</label>
             <select v-model="form.nivelAtividade">
-              <option value="SEDENTARY">Sedentário (pouco ou nenhum exercício)</option>
-              <option value="LIGHT">Leve (1–3x por semana)</option>
-              <option value="MODERATE">Moderado (3–5x por semana)</option>
-              <option value="INTENSE">Intenso (treino diário)</option>
-              <option value="VERY_INTENSE">Muito intenso (2x por dia ou trabalho físico)</option>
+              <option v-for="opt in ACTIVITY_LEVEL_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
           </div>
         </div>
@@ -258,32 +382,29 @@ const finalizarTriagem = async () => {
           <div class="field mb-large">
             <label>Preferência de Dieta</label>
             <div class="segmented-control segmented-diet">
-              <button :class="{ active: form.preferenciaAlimentar === 'ONIVORA' }"     @click="form.preferenciaAlimentar = 'ONIVORA'">Onívora</button>
-              <button :class="{ active: form.preferenciaAlimentar === 'VEGETARIANA' }" @click="form.preferenciaAlimentar = 'VEGETARIANA'">Vegetariana</button>
-              <button :class="{ active: form.preferenciaAlimentar === 'VEGANA' }"      @click="form.preferenciaAlimentar = 'VEGANA'">Vegana</button>
-              <button :class="{ active: form.preferenciaAlimentar === 'PESCATARIANA' }" @click="form.preferenciaAlimentar = 'PESCATARIANA'">Pescatariana</button>
+              <button v-for="opt in DIET_TYPE_OPTIONS" :key="opt.value" :class="{ active: form.preferenciaAlimentar === opt.value }" @click="form.preferenciaAlimentar = opt.value">{{ opt.label }}</button>
             </div>
+            <p v-if="mostrarCautelaDieta" class="diet-caution">{{ ASSESSMENT_MESSAGES.RESTRICTIVE_DIET_CAUTION }}</p>
           </div>
           
           <div class="field">
             <label>Condições Clínicas</label>
             <div class="chip-container">
-              <button v-for="c in listaCondicoes" :key="c" class="chip" :class="{ active: form.condicoesSaude.includes(c) }" @click="toggleItem('condicoesSaude', c)">{{ c }}</button>
+              <button v-for="c in HEALTH_CONDITION_OPTIONS" :key="c" class="chip" :class="{ active: form.condicoesSaude.includes(c) }" @click="toggleArrayItem(form.condicoesSaude, c)">{{ c }}</button>
             </div>
           </div>
 
           <div class="field mt-large">
             <label>Alergias</label>
             <div class="chip-container">
-              <button v-for="a in listaAlergias" :key="a" class="chip" :class="{ active: form.alergias.includes(a) }" @click="toggleItem('alergias', a)">{{ a }}</button>
+              <button v-for="a in ALLERGY_OPTIONS" :key="a" class="chip" :class="{ active: form.alergias.includes(a) }" @click="toggleArrayItem(form.alergias, a)">{{ a }}</button>
             </div>
           </div>
         </div>
 
         <!-- FOOTER AÇÕES -->
         <footer class="form-footer">
-          <p v-if="erroSubmissao" class="erro-submissao">{{ erroSubmissao }}</p>
-          <button v-if="etapaAtual < 4" @click="proximaEtapa" class="btn-primary" :disabled="!etapaValida">
+          <button v-if="etapaAtual < 4" @click="proximaEtapa" class="btn-primary">
             Próximo Passo
           </button>
           <button v-else @click="finalizarTriagem" class="btn-finish" :disabled="carregando">
@@ -297,7 +418,7 @@ const finalizarTriagem = async () => {
 
 <style scoped>
 .triagem-layout {
-  --bg-deep: #0f172a; --bg-card: #1e293b; --emerald: #10b981; --text-dim: #94a3b8;
+  --bg-deep: #0f172a; --bg-card: #1e293b; --emerald: #10b981; --text-dim: #94a3b8; --error: #f87171;
   min-height: 100vh; background-color: var(--bg-deep); color: white; font-family: 'Inter', sans-serif;
 }
 
@@ -321,11 +442,6 @@ const finalizarTriagem = async () => {
   color: var(--text-dim); font-size: 1rem;
 }
 .state-error { color: #f87171; }
-
-/* Erro de submissão no footer */
-.erro-submissao {
-  color: #f87171; font-size: 0.85rem; margin-bottom: 0.8rem; text-align: right;
-}
 
 /* CONTAINER */
 .content-container { max-width: 700px; margin: 0 auto; padding: 4rem 1.5rem; }
@@ -365,7 +481,8 @@ input:focus { border-color: var(--emerald); outline: none; }
 .segmented-control button.active { background: var(--emerald); color: var(--bg-deep); }
 
 .segmented-diet { background: transparent; padding: 0; justify-content: center; flex-wrap: wrap; gap: 8px; }
-.segmented-diet button { flex: 0 0 auto; min-width: 130px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
+.segmented-diet button { flex: 0 0 auto; min-width: 116px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
+.diet-caution { margin: 12px 4px 0; font-size: 0.8rem; line-height: 1.45; color: #fbbf24; opacity: 0.9; display: flex; gap: 8px; }
 
 .chip-container { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); color: var(--text-dim); padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; }
@@ -380,6 +497,7 @@ input:focus { border-color: var(--emerald); outline: none; }
 .mt-large { margin-top: 2rem; }
 .mb-large { margin-bottom: 2rem; }
 .label-optional { font-size: 0.8rem; color: var(--text-dim); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.field-error { color: var(--error); font-size: 0.82rem; margin-top: 2px; display: block; }
 
 @media (max-width: 650px) { .input-grid { grid-template-columns: 1fr 1fr; } .form-card { padding: 2rem; } .selectable-card { flex: 0 1 calc(50% - 0.6rem); min-width: 0; max-width: none; } }
 @media (max-width: 420px) { .selectable-card { flex: 0 1 100%; max-width: none; } }

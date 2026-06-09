@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +18,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@PreAuthorize("hasAuthority('USER')")
 public class AiRecommendationController {
 
     private final AiRecommendationService aiRecommendationService;
@@ -55,11 +57,18 @@ public class AiRecommendationController {
     }
 
     @PostMapping("/ai/recommendations/{id}/feedback")
-    public ResponseEntity<FeedbackResponse> addFeedback(@PathVariable Integer id,
-                                                         @Valid @RequestBody FeedbackRequest request,
-                                                         Authentication authentication) {
-        RecommendationFeedback feedback = aiRecommendationService.addFeedback(id, authentication.getName(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(FeedbackResponse.from(feedback));
+    public ResponseEntity<FeedbackResponse> upsertFeedback(@PathVariable Integer id,
+                                                            @Valid @RequestBody FeedbackRequest request,
+                                                            Authentication authentication) {
+        RecommendationFeedback feedback = aiRecommendationService.upsertFeedback(id, authentication.getName(), request);
+        return ResponseEntity.ok(FeedbackResponse.from(feedback));
+    }
+
+    @GetMapping("/ai/recommendations/{id}/feedback")
+    public ResponseEntity<FeedbackResponse> getFeedback(@PathVariable Integer id, Authentication authentication) {
+        return aiRecommendationService.getFeedback(id, authentication.getName())
+                .map(f -> ResponseEntity.ok(FeedbackResponse.from(f)))
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @PatchMapping("/ai/recommendations/{id}/archive")

@@ -17,6 +17,9 @@ public record AssessmentResponse(
         @JsonProperty("goal")
         Assessment.NutritionalGoal goal,
 
+        @JsonProperty("dietType")
+        Assessment.DietType dietType,
+
         @JsonProperty("dietaryRestrictions")
         String dietaryRestrictions,
 
@@ -45,6 +48,7 @@ public record AssessmentResponse(
                 assessment.getUser().getId(),
                 assessment.getUser().getName(),
                 assessment.getGoal(),
+                assessment.getDietType(),
                 assessment.getDietaryRestrictions(),
                 assessment.getAllergies(),
                 assessment.getHealthConditions(),

@@ -42,7 +42,7 @@ public class AssessmentService {
 
     @Transactional
     public Assessment updateOwn(String authenticatedEmail, UpdateAssessmentRequest request) {
-        if (request.goal() == null && request.dietaryRestrictions() == null
+        if (request.goal() == null && request.dietType() == null && request.dietaryRestrictions() == null
                 && request.allergies() == null && request.healthConditions() == null
                 && request.mealsPerDay() == null && request.targetWeightKg() == null) {
             throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
@@ -54,6 +54,9 @@ public class AssessmentService {
         if (request.goal() != null) {
             assessment.setGoal(request.goal());
         }
+        if (request.dietType() != null) {
+            assessment.setDietType(request.dietType());
+        }
         if (request.dietaryRestrictions() != null) {
             assessment.setDietaryRestrictions(request.dietaryRestrictions());
         }
@@ -63,9 +66,12 @@ public class AssessmentService {
         if (request.healthConditions() != null) {
             assessment.setHealthConditions(request.healthConditions());
         }
-        // mealsPerDay e targetWeightKg são sempre aplicados (inclusive null para limpeza)
-        assessment.setMealsPerDay(request.mealsPerDay());
-        assessment.setTargetWeightKg(request.targetWeightKg());
+        if (request.mealsPerDay() != null) {
+            assessment.setMealsPerDay(request.mealsPerDay());
+        }
+        if (request.targetWeightKg() != null) {
+            assessment.setTargetWeightKg(request.targetWeightKg());
+        }
 
         return assessmentRepository.save(assessment);
     }
@@ -96,7 +102,7 @@ public class AssessmentService {
 
     @Transactional
     public Assessment update(Integer id, AdminUpdateAssessmentRequest request) {
-        if (request.goal() == null && request.dietaryRestrictions() == null
+        if (request.goal() == null && request.dietType() == null && request.dietaryRestrictions() == null
                 && request.allergies() == null && request.healthConditions() == null
                 && request.mealsPerDay() == null && request.targetWeightKg() == null) {
             throw new BusinessException("Informe pelo menos um campo para atualizar.", HttpStatus.BAD_REQUEST);
@@ -107,6 +113,10 @@ public class AssessmentService {
         if (request.goal() != null) {
             assessment.setGoal(request.goal());
         }
+        if (request.dietType() != null) {
+            // Clearing dietType to null via patch is not supported; a dedicated endpoint would be needed.
+            assessment.setDietType(request.dietType());
+        }
         if (request.dietaryRestrictions() != null) {
             assessment.setDietaryRestrictions(request.dietaryRestrictions());
         }
@@ -116,9 +126,12 @@ public class AssessmentService {
         if (request.healthConditions() != null) {
             assessment.setHealthConditions(request.healthConditions());
         }
-        // mealsPerDay e targetWeightKg são sempre aplicados (inclusive null para limpeza)
-        assessment.setMealsPerDay(request.mealsPerDay());
-        assessment.setTargetWeightKg(request.targetWeightKg());
+        if (request.mealsPerDay() != null) {
+            assessment.setMealsPerDay(request.mealsPerDay());
+        }
+        if (request.targetWeightKg() != null) {
+            assessment.setTargetWeightKg(request.targetWeightKg());
+        }
 
         return assessmentRepository.save(assessment);
     }
@@ -136,6 +149,7 @@ public class AssessmentService {
         Assessment assessment = new Assessment();
         assessment.setUser(user);
         assessment.setGoal(request.goal());
+        assessment.setDietType(request.dietType());
         assessment.setDietaryRestrictions(request.dietaryRestrictions());
         assessment.setAllergies(request.allergies());
         assessment.setHealthConditions(request.healthConditions());

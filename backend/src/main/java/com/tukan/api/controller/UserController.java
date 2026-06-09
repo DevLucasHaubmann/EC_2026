@@ -22,8 +22,15 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    public ResponseEntity<Page<UserResponse>> findAll(Pageable pageable) {
-        Page<UserResponse> users = userService.findAll(pageable)
+    public ResponseEntity<Page<UserResponse>> findAll(
+            @RequestParam(required = false) String q, Pageable pageable) {
+        // A blank query is routed to the unfiltered listing so the existing
+        // GET /users behavior (and its tests) stay unchanged; only a real term
+        // hits the search path.
+        boolean hasQuery = q != null && !q.isBlank();
+        Page<UserResponse> users = (hasQuery
+                ? userService.search(q, pageable)
+                : userService.findAll(pageable))
                 .map(UserResponse::from);
         return ResponseEntity.ok(users);
     }
@@ -40,8 +47,9 @@ public class UserController {
 
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> update(@PathVariable Integer id,
-                                               @RequestBody @Valid UpdateUserRequest request) {
-        return ResponseEntity.ok(UserResponse.from(userService.update(id, request)));
+                                               @RequestBody @Valid UpdateUserRequest request,
+                                               Authentication authentication) {
+        return ResponseEntity.ok(UserResponse.from(userService.update(id, request, authentication.getName())));
     }
 
 
@@ -53,7 +61,7 @@ public class UserController {
 
     @DeleteMapping("/{id}/sessions")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void revokeSessions(@PathVariable Integer id) {
-        userService.revokeAllSessions(id);
+    public void revokeSessions(@PathVariable Integer id, Authentication authentication) {
+        userService.revokeAllSessions(id, authentication.getName());
     }
 }

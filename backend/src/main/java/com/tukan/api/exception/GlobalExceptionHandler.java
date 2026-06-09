@@ -1,6 +1,7 @@
 package com.tukan.api.exception;
 
 import com.tukan.api.dto.ErrorResponse;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -98,5 +99,13 @@ public class GlobalExceptionHandler {
         String message = String.format("Parâmetro obrigatório ausente: '%s'.", e.getParameterName());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), message));
+    }
+
+    // Catches unique constraint violations that bypass service-level duplicate checks (e.g. concurrent requests).
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(),
+                        "Operação viola restrição de integridade. Registro duplicado ou referência inválida."));
     }
 }

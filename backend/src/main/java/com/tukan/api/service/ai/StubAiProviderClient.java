@@ -23,19 +23,19 @@ public class StubAiProviderClient implements AiProviderClient {
 
     private static final String MEAL_PLAN_STUB = """
             {
-              "resumo": "Plano alimentar gerado com base no seu perfil, objetivo e restrições. As refeições foram distribuídas para atender sua meta calórica diária.",
-              "explicacaoRefeicoes": {
+              "summary": "Plano alimentar gerado com base no seu perfil, objetivo e restrições. As refeições foram distribuídas para atender sua meta calórica diária.",
+              "mealExplanations": {
                 "CAFE_MANHA": "O café da manhã foi montado para fornecer energia inicial com equilíbrio entre carboidratos e proteínas.",
                 "ALMOCO": "O almoço concentra a maior parte das calorias, com foco em proteína e variedade de nutrientes.",
                 "LANCHE_TARDE": "O lanche da tarde é leve e ajuda a manter a energia até o jantar.",
                 "JANTA": "O jantar fecha o dia com uma refeição completa e de fácil digestão."
               },
-              "dicas": [
+              "tips": [
                 "Beba água ao longo do dia para manter uma boa hidratação",
                 "Prepare os alimentos com temperos naturais para melhor sabor",
                 "Tente manter horários regulares para as refeições"
               ],
-              "alertas": [
+              "alerts": [
                 "Este plano é uma sugestão inicial gerada automaticamente. Consulte um nutricionista para acompanhamento personalizado."
               ]
             }

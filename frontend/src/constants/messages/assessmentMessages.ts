@@ -1,0 +1,15 @@
+export const ASSESSMENT_MESSAGES = {
+  LOADING: 'Verificando seu cadastro...',
+  LOAD_ERROR: 'Não foi possível verificar seu cadastro. Tente novamente.',
+  SAVE_ERROR: 'Ocorreu um erro ao salvar seus dados. Tente novamente.',
+  EXIT_CONFIRM: 'Deseja sair? Seus dados não serão salvos.',
+  CREATE_SUCCESS: 'Triagem criada com sucesso.',
+  UPDATE_SUCCESS: 'Triagem atualizada com sucesso.',
+  CREATE_ERROR: 'Erro ao criar triagem.',
+  UPDATE_ERROR: 'Erro ao salvar triagem.',
+  DELETE_SUCCESS: 'Triagem excluída.',
+  DELETE_ERROR: 'Erro ao excluir triagem.',
+  LINKED_DELETE_ERROR: 'Erro ao excluir triagem vinculada.',
+  LINKED_DELETE_PROFILE_KEPT: 'O perfil não foi excluído.',
+  RESTRICTIVE_DIET_CAUTION: 'Padrão alimentar mais restritivo. Este app tem finalidade educativa e não substitui acompanhamento nutricional profissional.',
+} as const

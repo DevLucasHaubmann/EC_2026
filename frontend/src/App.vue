@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppSidebar from './components/AppSidebar.vue'
+import ToastContainer from './components/ui/ToastContainer.vue'
+import ModalContainer from './components/ui/ModalContainer.vue'
 
 const route = useRoute()
 const showSidebar = computed(() => !!route.meta.requiresAuth && !route.meta.noSidebar)
@@ -13,6 +15,8 @@ const showSidebar = computed(() => !!route.meta.requiresAuth && !route.meta.noSi
     <div class="app-content">
       <RouterView />
     </div>
+    <ToastContainer />
+    <ModalContainer />
   </div>
 </template>
 

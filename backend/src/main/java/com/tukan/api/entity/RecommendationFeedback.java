@@ -1,11 +1,14 @@
 package com.tukan.api.entity;
 
+import com.tukan.api.converter.FeedbackTagListConverter;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "recommendation_feedback", indexes = {
@@ -16,9 +19,18 @@ import java.time.Instant;
 @NoArgsConstructor
 public class RecommendationFeedback {
 
-    public enum Rating {
-        LIKED,
-        DISLIKED
+    public enum FeedbackTag {
+        PRACTICAL,
+        VARIED,
+        AFFORDABLE,
+        BALANCED,
+        TASTY,
+        TOO_RESTRICTIVE,
+        REPETITIVE,
+        EXPENSIVE,
+        LACKING_PROTEIN,
+        EASY_TO_PREPARE,
+        OTHER
     }
 
     @Id
@@ -29,21 +41,34 @@ public class RecommendationFeedback {
     @JoinColumn(name = "recommendation_id", nullable = false)
     private Recommendation recommendation;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "rating", nullable = false)
-    private Rating rating;
+    private int rating;
 
-    @Column(name = "reason", length = 500)
-    private String reason;
+    @Convert(converter = FeedbackTagListConverter.class)
+    @Column(name = "liked_tags", columnDefinition = "TEXT")
+    private List<FeedbackTag> likedTags = new ArrayList<>();
 
-    @Column(name = "observation", length = 1000)
-    private String observation;
+    @Convert(converter = FeedbackTagListConverter.class)
+    @Column(name = "disliked_tags", columnDefinition = "TEXT")
+    private List<FeedbackTag> dislikedTags = new ArrayList<>();
+
+    @Column(name = "comment", length = 1000)
+    private String comment;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
     }
 }

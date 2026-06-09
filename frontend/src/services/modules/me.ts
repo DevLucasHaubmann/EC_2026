@@ -1,9 +1,14 @@
-import { api } from '../http/api'
+import { api } from '@/services/http/api'
+import type { MeResponse } from '@/types/api'
 
 export const meService = {
-  // Busca as informações do usuário logado e seu status de onboarding
-  getMe: async () => {
-    const res = await api.get('/me')
+  getMe: async (): Promise<MeResponse> => {
+    const res = await api.get<MeResponse>('/me')
     return res.data
-  }
+  },
+
+  updateAvatar: async (avatarUrl: string | null): Promise<MeResponse> => {
+    const res = await api.patch<MeResponse>('/me/avatar', { avatarUrl })
+    return res.data
+  },
 }

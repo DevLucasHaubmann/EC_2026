@@ -99,15 +99,19 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import AuthCard from '../../components/auth/AuthCard.vue'
-import AuthInput from '../../components/auth/AuthInput.vue'
-import AuthButton from '../../components/auth/AuthButton.vue'
-import { useAuthStore } from '../../stores'
+import AuthCard from '@/components/auth/AuthCard.vue'
+import AuthInput from '@/components/auth/AuthInput.vue'
+import AuthButton from '@/components/auth/AuthButton.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
+import { AUTH_MESSAGES } from '@/constants/messages'
+import type { RouteLocationRaw } from 'vue-router'
 
 type Mode = 'login' | 'register'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const toast = useToast()
 const mode = ref<Mode>('login')
 
 const loginForm = reactive({ email: '', password: '' })
@@ -121,6 +125,7 @@ function switchMode(next: Mode) {
 async function handleLogin() {
   try {
     const nextStep = await authStore.login({ email: loginForm.email, password: loginForm.password })
+    toast.success(AUTH_MESSAGES.LOGIN_SUCCESS)
     router.push(resolveNextStep(nextStep))
   } catch (e) {}
 }
@@ -128,14 +133,16 @@ async function handleLogin() {
 async function handleRegister() {
   try {
     const nextStep = await authStore.register({ name: registerForm.name, email: registerForm.email, password: registerForm.password })
+    toast.success(AUTH_MESSAGES.REGISTER_SUCCESS)
     router.push(resolveNextStep(nextStep))
   } catch (e) {}
 }
 
-function resolveNextStep(nextStep: string) {
+function resolveNextStep(nextStep: string): RouteLocationRaw {
+  // Admin always goes to admin panel, regardless of what the backend nextStep says
+  if (authStore.isAdmin) return { name: 'admin-dashboard' }
   if (nextStep === '/profiles/first-access') return { name: 'triagem' }
   if (nextStep === '/assessments') return { name: 'triagem' }
-  if (nextStep === '/dashboard') return { name: 'dashboard' }
   return { name: 'dashboard' }
 }
 </script>

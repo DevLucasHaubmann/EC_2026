@@ -14,7 +14,9 @@ public record UserResponse(
         @JsonProperty("type")
         User.UserType type,
 
-        User.UserState status
+        User.UserState status,
+
+        String avatarUrl
 ) {
 
     public static UserResponse from(User user) {
@@ -23,7 +25,8 @@ public record UserResponse(
                 user.getName(),
                 user.getEmail(),
                 user.getType(),
-                user.getStatus()
+                user.getStatus(),
+                user.getAvatarUrl()
         );
     }
 }

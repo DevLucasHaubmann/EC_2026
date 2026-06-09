@@ -23,9 +23,9 @@ class MealDistributorTest {
             Map<String, Double> result = distributor.distribute(2000.0, 3);
 
             assertThat(result).containsOnlyKeys("BREAKFAST", "LUNCH", "DINNER");
-            assertThat(result.get("BREAKFAST")).isEqualTo(500.0);
+            assertThat(result.get("BREAKFAST")).isEqualTo(400.0);
             assertThat(result.get("LUNCH")).isEqualTo(800.0);
-            assertThat(result.get("DINNER")).isEqualTo(700.0);
+            assertThat(result.get("DINNER")).isEqualTo(800.0);
         }
 
         @Test

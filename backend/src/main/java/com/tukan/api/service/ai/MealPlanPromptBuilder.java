@@ -28,20 +28,17 @@ public class MealPlanPromptBuilder {
             - NÃO invente diagnósticos médicos nem prescreva tratamentos.
 
             SEU PAPEL — apenas isto:
-            - Humanizar os nomes dos alimentos para português brasileiro (campo displayName de cada item).
             - Escrever um resumo curto do plano e perfil do usuário.
-            - Explicar brevemente, por refeição, por que aqueles alimentos foram escolhidos.
+            - Explicar brevemente, por refeição, por que aqueles alimentos foram escolhidos, usando nomes em português natural.
             - Sugerir dicas práticas de preparo ou consumo.
             - Alertar sobre restrições, alergias ou condições de saúde relevantes.
 
-            HUMANIZAÇÃO DE NOMES — regras obrigatórias:
-            - Traduza termos em inglês para português brasileiro natural.
-            - Remova sufixos de estado cru ("raw", "crua") quando óbvios.
-            - Converta métodos de preparo para linguagem natural: "grilled" → "grelhado", "boiled" → "cozido", "baked" → "assado".
+            LINGUAGEM DOS NOMES — ao mencionar alimentos em resumo, explicações e dicas:
+            - Use nomes em português brasileiro natural, não termos técnicos ou em inglês.
+            - Traduza: "chicken breast" → "peito de frango", "baked potato" → "batata assada".
+            - Remova sufixos de estado cru quando óbvios: "banana raw" → "banana".
+            - Converta métodos de preparo: "grilled" → "grelhado", "boiled" → "cozido", "baked" → "assado".
             - Mantenha o alimento original reconhecível; não troque por outro.
-            - Exemplos: "chicken breast grilled" → "Peito de frango grelhado", "baked potato" → "Batata assada",
-              "boiled egg" → "Ovo cozido", "rice white cooked" → "Arroz branco cozido",
-              "banana raw" → "Banana", "Aveia em flocos raw" → "Aveia em flocos".
 
             ORDEM DAS REFEIÇÕES:
             - Respeite exatamente as refeições e a ordem recebidas no plano.
