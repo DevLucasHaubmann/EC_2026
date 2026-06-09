@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { meService } from '../../services/modules/me';
-import { formatActivityLevel } from '../../utils/formatters';
+import { meService } from '@/services/modules/me';
+import { formatActivityLevel, calcularIdade } from '@/utils/formatters';
+import { GOAL_LABELS, DIET_LABELS, GENDER_LABELS } from '@/constants/labels';
+import { PROFILE_MESSAGES } from '@/constants/messages';
+import type { Dashboard, DietType } from '@/types/api';
+import UserAvatar from '@/components/UserAvatar.vue';
 
 const router = useRouter();
 
@@ -11,6 +15,7 @@ const erro = ref<string | null>(null);
 
 const nome = ref('—')
 const email = ref('—')
+const avatarUrl = ref<string | null>(null)
 const pesoAtual = ref<string>('—')
 const altura = ref<string>('—')
 const idade = ref<string>('—')
@@ -23,27 +28,9 @@ const alergias = ref<string>('—')
 const refeicoesPorDia = ref<string>('—')
 const pesoAlvo = ref<string>('—')
 
-const GOAL_LABELS: Record<string, string> = {
-  WEIGHT_LOSS: 'Perda de peso',
-  MUSCLE_GAIN: 'Ganho de massa',
-  MAINTENANCE: 'Manutenção',
-  DIETARY_REEDUCATION: 'Reeducação alimentar',
-  SPORTS_PERFORMANCE: 'Performance esportiva',
-}
-
-const GENDER_LABELS: Record<string, string> = {
-  MALE: 'Masculino',
-  FEMALE: 'Feminino',
-}
-
-function calcularIdade(dateOfBirth: string): number {
-  const nasc = new Date(dateOfBirth)
-  const hoje = new Date()
-  let anos = hoje.getFullYear() - nasc.getFullYear()
-  const m = hoje.getMonth() - nasc.getMonth()
-  if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) anos--
-  return anos
-}
+const refeicoesPorDiaFormatado = computed(() =>
+  refeicoesPorDia.value !== '—' ? `${refeicoesPorDia.value}x` : '—'
+)
 
 onMounted(async () => {
   try {
@@ -51,25 +38,29 @@ onMounted(async () => {
 
     nome.value = me.name ?? '—'
     email.value = me.email ?? '—'
+    avatarUrl.value = me.avatarUrl ?? null
 
     if (me.profile) {
       pesoAtual.value = me.profile.weightKg != null ? `${me.profile.weightKg}` : '—'
       altura.value = me.profile.heightCm != null ? `${me.profile.heightCm}` : '—'
-      sexo.value = GENDER_LABELS[me.profile.gender] ?? me.profile.gender ?? '—'
+      sexo.value = GENDER_LABELS[me.profile.gender as Dashboard.Gender] ?? me.profile.gender ?? '—'
       idade.value = me.profile.dateOfBirth ? `${calcularIdade(me.profile.dateOfBirth)}` : '—'
       nivelAtividade.value = me.profile.activityLevel ? formatActivityLevel(me.profile.activityLevel) : '—'
     }
 
     if (me.assessment) {
-      objetivo.value = GOAL_LABELS[me.assessment.goal] ?? me.assessment.goal ?? '—'
-      tipoDieta.value = me.assessment.dietaryRestrictions || 'Sem restrições'
+      objetivo.value = GOAL_LABELS[me.assessment.goal as Dashboard.NutritionalGoal] ?? me.assessment.goal ?? '—'
+      const dietKey = me.assessment.dietType ?? me.assessment.dietaryRestrictions
+      tipoDieta.value = dietKey
+        ? (DIET_LABELS[dietKey as DietType] ?? dietKey)
+        : 'Não informado'
       condicoesSaude.value = me.assessment.healthConditions || 'Nenhuma'
       alergias.value = me.assessment.allergies || 'Nenhuma'
       refeicoesPorDia.value = me.assessment.mealsPerDay != null ? `${me.assessment.mealsPerDay}` : '—'
       pesoAlvo.value = me.assessment.targetWeightKg != null ? `${me.assessment.targetWeightKg}` : '—'
     }
   } catch {
-    erro.value = 'Não foi possível carregar seu perfil.'
+    erro.value = PROFILE_MESSAGES.LOAD_ERROR
   } finally {
     loading.value = false
   }
@@ -82,7 +73,7 @@ const editarPerfil = () => router.push({ name: 'editar-perfil' });
   <div class="profile-wrapper">
     <!-- Estado: carregando -->
     <div v-if="loading" class="state-center">
-      <p style="color: #94a3b8;">Carregando perfil...</p>
+      <p style="color: #94a3b8;">{{ PROFILE_MESSAGES.LOADING }}</p>
     </div>
 
     <!-- Estado: erro -->
@@ -93,6 +84,7 @@ const editarPerfil = () => router.push({ name: 'editar-perfil' });
     <!-- Conteúdo real -->
     <div v-else class="content-container">
       <header class="profile-hero">
+        <UserAvatar :name="nome !== '—' ? nome : undefined" :email="email !== '—' ? email : undefined" :avatar-url="avatarUrl" :size="72" />
         <div class="hero-info">
           <h1>{{ nome }}</h1>
           <p>{{ email }}</p>
@@ -167,7 +159,7 @@ const editarPerfil = () => router.push({ name: 'editar-perfil' });
             </div>
             <div class="routine-item">
               <span class="r-label">Refeições por dia</span>
-              <span class="r-val">{{ refeicoesPorDia !== '—' ? refeicoesPorDia + 'x' : '—' }}</span>
+              <span class="r-val">{{ refeicoesPorDiaFormatado }}</span>
             </div>
           </div>
         </section>
@@ -216,12 +208,6 @@ const editarPerfil = () => router.push({ name: 'editar-perfil' });
   display: flex; align-items: center; gap: 3rem; margin-bottom: 5rem;
 }
 
-.avatar-glow {
-  position: relative; padding: 5px; background: linear-gradient(45deg, var(--accent), #34d399); border-radius: 40px;
-}
-.avatar-glow img { width: 130px; height: 130px; border-radius: 35px; border: 4px solid var(--bg-deep); object-fit: cover; }
-
-.status-badge { background: rgba(16, 185, 129, 0.1); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
 .hero-info h1 { font-size: 3rem; font-weight: 900; letter-spacing: -1.5px; margin: 0.5rem 0; }
 .hero-info p { color: var(--text-muted); font-size: 1.1rem; }
 

@@ -2,6 +2,7 @@ package com.tukan.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.tukan.api.entity.Assessment;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -13,6 +14,10 @@ public record CreateAssessmentRequest(
         @JsonProperty("goal")
         @NotNull(message = "O objetivo nutricional é obrigatório.")
         Assessment.NutritionalGoal goal,
+
+        @JsonProperty("dietType")
+        @NotNull(message = "O tipo de dieta é obrigatório.")
+        Assessment.DietType dietType,
 
         @JsonProperty("dietaryRestrictions")
         @Size(max = 500, message = "Restrições alimentares devem ter no máximo 500 caracteres.")
@@ -27,12 +32,14 @@ public record CreateAssessmentRequest(
         String healthConditions,
 
         @JsonProperty("mealsPerDay")
-        @Min(value = 1, message = "Número de refeições deve ser entre 1 e 10.")
-        @Max(value = 10, message = "Número de refeições deve ser entre 1 e 10.")
+        @NotNull(message = "O número de refeições por dia é obrigatório.")
+        @Min(value = 3, message = "Número de refeições deve ser entre 3 e 5.")
+        @Max(value = 5, message = "Número de refeições deve ser entre 3 e 5.")
         Integer mealsPerDay,
 
         @JsonProperty("targetWeightKg")
         @Positive(message = "Peso alvo deve ser positivo.")
+        @DecimalMax(value = "500.0", message = "Peso alvo não pode exceder 500 kg.")
         Double targetWeightKg
 ) {
 }

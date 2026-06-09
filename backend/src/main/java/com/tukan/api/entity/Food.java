@@ -21,6 +21,9 @@ public class Food {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "display_name", nullable = false)
+    private String displayName;
+
     @Column(name = "normalized_name")
     private String normalizedName;
 
@@ -51,6 +54,15 @@ public class Food {
     @Column(name = "suitable_meals")
     private String suitableMeals;
 
+    /**
+     * Functional role of the food in a meal composition (Task 2.4B).
+     * Separate axis from {@link #category}. NULL until reclassified in 2.4C;
+     * read it through {@link #getEffectiveRole()} for a non-null value.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "food_role", length = 40)
+    private FoodRole foodRole;
+
     @Column(name = "reference_portion_grams")
     private BigDecimal referencePortionGrams;
 
@@ -74,4 +86,13 @@ public class Food {
 
     @Column(name = "active", nullable = false)
     private boolean active;
+
+    /**
+     * Non-null view of {@link #foodRole}: foods not yet reclassified (NULL) are
+     * treated as {@link FoodRole#UNSPECIFIED}. Keeps selection logic null-safe
+     * during the retrocompatibility window before 2.4C.
+     */
+    public FoodRole getEffectiveRole() {
+        return FoodRole.orUnspecified(foodRole);
+    }
 }

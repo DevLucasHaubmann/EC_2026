@@ -1,70 +1,62 @@
 package com.tukan.api.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tukan.api.dto.FeedbackRequest;
-import com.tukan.api.dto.mealplan.MealPlanRecommendationResponse;
 import com.tukan.api.entity.Recommendation;
 import com.tukan.api.entity.RecommendationFeedback;
-import com.tukan.api.entity.User;
-import com.tukan.api.exception.AiProviderException;
 import com.tukan.api.exception.BusinessException;
 import com.tukan.api.repository.RecommendationFeedbackRepository;
 import com.tukan.api.repository.RecommendationRepository;
 import com.tukan.api.service.mealplan.MealPlanAiService;
 import com.tukan.api.service.mealplan.MealPlanGenerationResult;
+import com.tukan.api.service.mealplan.MealPlanPreparation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class AiRecommendationService {
 
     private final UserService userService;
+    private final MealPlanReadinessValidator readinessValidator;
     private final MealPlanAiService mealPlanAiService;
+    private final RecommendationPersistenceService recommendationPersistenceService;
     private final RecommendationRepository recommendationRepository;
     private final RecommendationFeedbackRepository recommendationFeedbackRepository;
-    private final ObjectMapper objectMapper;
 
-    private static final List<Recommendation.RecommendationStatus> ACTIVE_STATUSES = List.of(
-            Recommendation.RecommendationStatus.GENERATED,
-            Recommendation.RecommendationStatus.VIEWED
-    );
-
-    @Transactional
+    /**
+     * Orchestrates the synchronous generation flow in three decoupled phases so the
+     * external AI call never runs inside a database transaction:
+     * <ol>
+     *   <li>prepare: deterministic plan/context in a short read-only transaction;</li>
+     *   <li>enrich: external AI call with no transaction held;</li>
+     *   <li>persist: archive + save in a short write transaction.</li>
+     * </ol>
+     * Intentionally NOT {@code @Transactional}: each phase owns its own transactional
+     * boundary through its bean proxy.
+     *
+     * <p>The same readiness gate used by the asynchronous flow runs first, so an incomplete
+     * profile/assessment is rejected with a clear triage error before the engine is ever reached.
+     */
     public Recommendation generateAndSave(String authenticatedEmail) {
-        User user = userService.findByEmail(authenticatedEmail);
-
-        archiveActiveRecommendations(user.getId());
-
-        MealPlanGenerationResult result = mealPlanAiService.generate(authenticatedEmail);
-        String contextJson = toJson(result.context());
-
-        Recommendation recommendation = toEntity(user, result.response(), contextJson);
-        return recommendationRepository.save(recommendation);
-    }
-
-    private void archiveActiveRecommendations(Integer userId) {
-        List<Recommendation> activeRecommendations = recommendationRepository
-                .findByUserIdAndStatusIn(userId, ACTIVE_STATUSES);
-
-        for (Recommendation rec : activeRecommendations) {
-            rec.setStatus(Recommendation.RecommendationStatus.ARCHIVED);
-        }
-
-        recommendationRepository.saveAll(activeRecommendations);
+        Integer userId = userService.findByEmail(authenticatedEmail).getId();
+        readinessValidator.validate(userId);
+        MealPlanPreparation preparation = mealPlanAiService.prepare(authenticatedEmail);
+        MealPlanGenerationResult result = mealPlanAiService.enrich(preparation);
+        return recommendationPersistenceService.persist(authenticatedEmail, result);
     }
 
     @Transactional(readOnly = true)
     public Recommendation findLatest(String authenticatedEmail) {
         Integer userId = userService.findByEmail(authenticatedEmail).getId();
-        return recommendationRepository.findFirstByUserIdOrderByCreatedAtDesc(userId)
+        return recommendationRepository
+                .findFirstByUserIdAndStatusInOrderByCreatedAtDesc(userId, Recommendation.ACTIVE_STATUSES)
                 .orElseThrow(() -> new BusinessException(
-                        "Nenhuma recomendação encontrada para este usuário.", HttpStatus.NOT_FOUND));
+                        "Nenhuma dieta ativa encontrada para este usuário.", HttpStatus.NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
@@ -97,25 +89,37 @@ public class AiRecommendationService {
     }
 
     @Transactional
-    public RecommendationFeedback addFeedback(Integer id, String authenticatedEmail, FeedbackRequest request) {
+    public RecommendationFeedback upsertFeedback(Integer id, String authenticatedEmail, FeedbackRequest request) {
         Recommendation recommendation = findByIdAndOwner(id, authenticatedEmail);
 
-        if (recommendationFeedbackRepository.existsByRecommendationId(id)) {
+        if (recommendation.getStatus() == Recommendation.RecommendationStatus.ARCHIVED) {
             throw new BusinessException(
-                    "Esta recomendação já possui feedback registrado.", HttpStatus.CONFLICT);
+                    "Não é possível enviar feedback para recomendações arquivadas.",
+                    HttpStatus.CONFLICT);
         }
+
+        RecommendationFeedback feedback = recommendationFeedbackRepository
+                .findByRecommendationId(id)
+                .orElseGet(RecommendationFeedback::new);
+
+        feedback.setRecommendation(recommendation);
+        feedback.setRating(request.rating());
+        feedback.setLikedTags(request.likedTags() != null ? request.likedTags() : List.of());
+        feedback.setDislikedTags(request.dislikedTags() != null ? request.dislikedTags() : List.of());
+        feedback.setComment(request.comment());
 
         if (recommendation.getStatus() == Recommendation.RecommendationStatus.GENERATED) {
             recommendation.setStatus(Recommendation.RecommendationStatus.VIEWED);
             recommendationRepository.save(recommendation);
         }
 
-        RecommendationFeedback feedback = new RecommendationFeedback();
-        feedback.setRecommendation(recommendation);
-        feedback.setRating(request.rating());
-        feedback.setReason(request.reason());
-        feedback.setObservation(request.observation());
         return recommendationFeedbackRepository.save(feedback);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<RecommendationFeedback> getFeedback(Integer id, String authenticatedEmail) {
+        findByIdAndOwner(id, authenticatedEmail);
+        return recommendationFeedbackRepository.findByRecommendationId(id);
     }
 
     @Transactional
@@ -136,28 +140,5 @@ public class AiRecommendationService {
         return recommendationRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new BusinessException(
                         "Recomendação não encontrada.", HttpStatus.NOT_FOUND));
-    }
-
-    private Recommendation toEntity(User user, MealPlanRecommendationResponse response, String contextJson) {
-        Recommendation recommendation = new Recommendation();
-        recommendation.setUser(user);
-        recommendation.setSummary(response.summary());
-        recommendation.setPlanJson(toJson(response.plan()));
-        recommendation.setMealExplanationsJson(toJson(response.mealExplanations()));
-        recommendation.setTipsJson(toJson(response.tips()));
-        recommendation.setAlertsJson(toJson(response.alerts()));
-        recommendation.setContextJson(contextJson);
-        recommendation.setProvider(response.provider());
-        recommendation.setModel(response.model());
-        recommendation.setStatus(Recommendation.RecommendationStatus.GENERATED);
-        return recommendation;
-    }
-
-    private String toJson(Object value) {
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
-            throw new AiProviderException("Erro ao serializar dados da recomendação.", e);
-        }
     }
 }

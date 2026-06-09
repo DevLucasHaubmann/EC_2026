@@ -45,4 +45,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private UserState status = UserState.ACTIVE;
+
+    @Column(name = "avatar_url", length = 512)
+    private String avatarUrl;
 }

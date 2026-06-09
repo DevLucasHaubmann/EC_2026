@@ -24,6 +24,17 @@ public class Assessment {
         SPORTS_PERFORMANCE
     }
 
+    public enum DietType {
+        ONIVORA,
+        VEGETARIANA,
+        VEGANA,
+        PESCATARIANA,
+        LOW_CARB,
+        FLEXITARIANA,
+        CETOGENICA,
+        CARNIVORA
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -35,6 +46,10 @@ public class Assessment {
     @Enumerated(EnumType.STRING)
     @Column(name = "goal", nullable = false)
     private NutritionalGoal goal;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "diet_type", length = 50)
+    private DietType dietType;
 
     @Column(name = "dietary_restrictions", length = 500)
     private String dietaryRestrictions;

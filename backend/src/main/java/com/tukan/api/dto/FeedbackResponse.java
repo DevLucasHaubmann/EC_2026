@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.tukan.api.entity.RecommendationFeedback;
 
 import java.time.Instant;
+import java.util.List;
 
 public record FeedbackResponse(
         Integer id,
@@ -12,16 +13,22 @@ public record FeedbackResponse(
         Integer recommendationId,
 
         @JsonProperty("rating")
-        RecommendationFeedback.Rating rating,
+        int rating,
 
-        @JsonProperty("reason")
-        String reason,
+        @JsonProperty("likedTags")
+        List<RecommendationFeedback.FeedbackTag> likedTags,
 
-        @JsonProperty("observation")
-        String observation,
+        @JsonProperty("dislikedTags")
+        List<RecommendationFeedback.FeedbackTag> dislikedTags,
+
+        @JsonProperty("comment")
+        String comment,
 
         @JsonProperty("createdAt")
-        Instant createdAt
+        Instant createdAt,
+
+        @JsonProperty("updatedAt")
+        Instant updatedAt
 ) {
 
     public static FeedbackResponse from(RecommendationFeedback feedback) {
@@ -29,9 +36,11 @@ public record FeedbackResponse(
                 feedback.getId(),
                 feedback.getRecommendation().getId(),
                 feedback.getRating(),
-                feedback.getReason(),
-                feedback.getObservation(),
-                feedback.getCreatedAt()
+                feedback.getLikedTags(),
+                feedback.getDislikedTags(),
+                feedback.getComment(),
+                feedback.getCreatedAt(),
+                feedback.getUpdatedAt()
         );
     }
 }

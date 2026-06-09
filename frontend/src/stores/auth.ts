@@ -5,8 +5,9 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { authService } from '../services/modules/auth'
+import { authService } from '@/services/modules/auth'
 import type { LoginRequest, RegisterRequest, UserType } from '@/types/auth'
+import { resolveErrorMessage } from '@/utils/resolveErrorMessage'
 
 const ACCESS_TOKEN_KEY = 'tukan_access_token'
 const REFRESH_TOKEN_KEY = 'tukan_refresh_token'
@@ -34,7 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
     userType.value = isValidUserType(storedType) ? storedType : null
   }
 
-  function persistTokens(access: string, refresh: string, type: UserType) {
+  function persistTokens(access: string, refresh: string, type: UserType): void {
     accessToken.value = access
     refreshToken.value = refresh
     userType.value = type ?? null
@@ -47,7 +48,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function clearSession() {
+  function clearSession(): void {
     accessToken.value = null
     refreshToken.value = null
     userType.value = null
@@ -56,7 +57,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(USER_TYPE_KEY)
   }
 
-  function clearError() {
+  function clearError(): void {
     error.value = null
   }
 
@@ -67,7 +68,7 @@ export const useAuthStore = defineStore('auth', () => {
       const data = await authService.login(payload)
       persistTokens(data.accessToken, data.refreshToken, data.userType)
       return data.nextStep
-    } catch (err: any) {
+    } catch (err: unknown) {
       error.value = resolveErrorMessage(err)
       throw err
     } finally {
@@ -82,7 +83,7 @@ export const useAuthStore = defineStore('auth', () => {
       const data = await authService.register(payload)
       persistTokens(data.accessToken, data.refreshToken, data.userType)
       return data.nextStep
-    } catch (err: any) {
+    } catch (err: unknown) {
       error.value = resolveErrorMessage(err)
       throw err
     } finally {
@@ -90,7 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function logout() {
+  async function logout(): Promise<void> {
     const token = refreshToken.value
     clearSession()
     if (token) {
@@ -131,18 +132,4 @@ export const useAuthStore = defineStore('auth', () => {
 
 function isValidUserType(value: string | null): value is UserType {
   return value === 'ADMIN' || value === 'USER'
-}
-
-function resolveErrorMessage(err: any): string {
-  const status = err.response?.status
-  const serverMessage = err.response?.data?.message
-
-  if (serverMessage) return serverMessage
-
-  if (status === 401) return 'E-mail ou senha incorretos.'
-  if (status === 409) return 'Este e-mail já está cadastrado.'
-  if (status === 400 || status === 422) return 'Dados inválidos. Verifique as informações e tente novamente.'
-  if (status === 500 || status === 503) return 'Serviço temporariamente indisponível. Tente novamente em breve.'
-
-  return 'Ocorreu um erro inesperado. Tente novamente.'
 }

@@ -9,6 +9,7 @@ import com.tukan.api.exception.AiProviderException;
 import com.tukan.api.exception.BusinessException;
 import com.tukan.api.exception.GlobalExceptionHandler;
 import com.tukan.api.exception.IncompleteProfileException;
+import com.tukan.api.security.DatabaseBackedJwtAuthenticationConverter;
 import com.tukan.api.service.AiRecommendationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
@@ -43,6 +45,9 @@ class AiRecommendationControllerTest {
 
     @MockitoBean
     private AiRecommendationService aiRecommendationService;
+
+    @MockitoBean
+    private DatabaseBackedJwtAuthenticationConverter jwtAuthenticationConverter;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -289,54 +294,39 @@ class AiRecommendationControllerTest {
 
     @Nested
     @DisplayName("POST /ai/recommendations/{id}/feedback")
-    class AddFeedback {
+    class UpsertFeedback {
 
         @Test
-        @DisplayName("should return 201 with created feedback")
-        void shouldReturn201WithFeedback() throws Exception {
+        @DisplayName("should return 200 with feedback")
+        void shouldReturn200WithFeedback() throws Exception {
             RecommendationFeedback feedback = new RecommendationFeedback();
             feedback.setId(1);
             feedback.setRecommendation(recommendation);
-            feedback.setRating(RecommendationFeedback.Rating.LIKED);
-            feedback.setReason("Muito útil");
-            feedback.setCreatedAt(Instant.now());
+            feedback.setRating(4);
+            feedback.setComment("Muito útil");
+            feedback.setLikedTags(List.of(RecommendationFeedback.FeedbackTag.PRACTICAL));
+            feedback.setDislikedTags(List.of());
 
-            when(aiRecommendationService.addFeedback(eq(1), anyString(), any(FeedbackRequest.class)))
+            when(aiRecommendationService.upsertFeedback(eq(1), anyString(), any(FeedbackRequest.class)))
                     .thenReturn(feedback);
 
             String body = objectMapper.writeValueAsString(
-                    new FeedbackRequest(RecommendationFeedback.Rating.LIKED, "Muito útil", null));
+                    new FeedbackRequest(4, List.of(RecommendationFeedback.FeedbackTag.PRACTICAL), List.of(), "Muito útil"));
 
             mockMvc.perform(post("/ai/recommendations/1/feedback")
                             .with(jwt().jwt(j -> j.subject("lucas@email.com")))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
-                    .andExpect(status().isCreated())
+                    .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(1))
-                    .andExpect(jsonPath("$.rating").value("LIKED"))
-                    .andExpect(jsonPath("$.reason").value("Muito útil"));
-        }
-
-        @Test
-        @DisplayName("should return 409 when feedback already exists")
-        void shouldReturn409WhenFeedbackAlreadyExists() throws Exception {
-            when(aiRecommendationService.addFeedback(eq(1), anyString(), any(FeedbackRequest.class)))
-                    .thenThrow(new BusinessException("Esta recomendação já possui feedback registrado.", HttpStatus.CONFLICT));
-
-            String body = objectMapper.writeValueAsString(
-                    new FeedbackRequest(RecommendationFeedback.Rating.LIKED, null, null));
-
-            mockMvc.perform(post("/ai/recommendations/1/feedback")
-                            .with(jwt().jwt(j -> j.subject("lucas@email.com")))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(body))
-                    .andExpect(status().isConflict());
+                    .andExpect(jsonPath("$.rating").value(4))
+                    .andExpect(jsonPath("$.comment").value("Muito útil"));
         }
 
         @Test
         @DisplayName("should return 400 when rating is absent")
         void shouldReturn400WhenRatingAbsent() throws Exception {
-            String body = "{\"reason\": \"teste\"}";
+            String body = "{\"comment\": \"teste\"}";
 
             mockMvc.perform(post("/ai/recommendations/1/feedback")
                             .with(jwt().jwt(j -> j.subject("lucas@email.com")))
@@ -348,11 +338,11 @@ class AiRecommendationControllerTest {
         @Test
         @DisplayName("should return 404 when recommendation does not belong to user")
         void shouldReturn404WhenOwnershipFails() throws Exception {
-            when(aiRecommendationService.addFeedback(eq(1), anyString(), any(FeedbackRequest.class)))
+            when(aiRecommendationService.upsertFeedback(eq(1), anyString(), any(FeedbackRequest.class)))
                     .thenThrow(new BusinessException("Recomendação não encontrada.", HttpStatus.NOT_FOUND));
 
             String body = objectMapper.writeValueAsString(
-                    new FeedbackRequest(RecommendationFeedback.Rating.LIKED, null, null));
+                    new FeedbackRequest(4, null, null, null));
 
             mockMvc.perform(post("/ai/recommendations/1/feedback")
                             .with(jwt().jwt(j -> j.subject("lucas@email.com")))
@@ -365,11 +355,64 @@ class AiRecommendationControllerTest {
         @DisplayName("should reject unauthenticated request")
         void shouldRejectUnauthenticated() throws Exception {
             String body = objectMapper.writeValueAsString(
-                    new FeedbackRequest(RecommendationFeedback.Rating.LIKED, null, null));
+                    new FeedbackRequest(4, null, null, null));
 
             mockMvc.perform(post("/ai/recommendations/1/feedback")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
+                    .andExpect(status().is4xxClientError());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /ai/recommendations/{id}/feedback")
+    class GetFeedback {
+
+        @Test
+        @DisplayName("should return 200 with feedback when it exists")
+        void shouldReturn200WithFeedback() throws Exception {
+            RecommendationFeedback feedback = new RecommendationFeedback();
+            feedback.setId(1);
+            feedback.setRecommendation(recommendation);
+            feedback.setRating(4);
+            feedback.setComment("Muito útil");
+
+            when(aiRecommendationService.getFeedback(eq(1), anyString()))
+                    .thenReturn(Optional.of(feedback));
+
+            mockMvc.perform(get("/ai/recommendations/1/feedback")
+                            .with(jwt().jwt(j -> j.subject("lucas@email.com"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(1))
+                    .andExpect(jsonPath("$.rating").value(4));
+        }
+
+        @Test
+        @DisplayName("should return 204 when no feedback exists")
+        void shouldReturn204WhenNoFeedback() throws Exception {
+            when(aiRecommendationService.getFeedback(eq(1), anyString()))
+                    .thenReturn(Optional.empty());
+
+            mockMvc.perform(get("/ai/recommendations/1/feedback")
+                            .with(jwt().jwt(j -> j.subject("lucas@email.com"))))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("should return 404 when recommendation does not belong to user")
+        void shouldReturn404WhenOwnershipFails() throws Exception {
+            when(aiRecommendationService.getFeedback(eq(1), anyString()))
+                    .thenThrow(new BusinessException("Recomendação não encontrada.", HttpStatus.NOT_FOUND));
+
+            mockMvc.perform(get("/ai/recommendations/1/feedback")
+                            .with(jwt().jwt(j -> j.subject("lucas@email.com"))))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("should reject unauthenticated request")
+        void shouldRejectUnauthenticated() throws Exception {
+            mockMvc.perform(get("/ai/recommendations/1/feedback"))
                     .andExpect(status().is4xxClientError());
         }
     }

@@ -18,9 +18,9 @@ public class MealDistributor {
     private static final Map<String, Double> PROPORTIONS_5 = new LinkedHashMap<>();
 
     static {
-        PROPORTIONS_3.put("BREAKFAST",       0.25);
+        PROPORTIONS_3.put("BREAKFAST",       0.20);
         PROPORTIONS_3.put("LUNCH",           0.40);
-        PROPORTIONS_3.put("DINNER",          0.35);
+        PROPORTIONS_3.put("DINNER",          0.40);
 
         PROPORTIONS_4.put("BREAKFAST",       0.20);
         PROPORTIONS_4.put("LUNCH",           0.35);

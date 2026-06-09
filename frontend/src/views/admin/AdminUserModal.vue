@@ -1,57 +1,73 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { adminUserService } from '../../services/modules/adminUser'
-import { adminProfileService } from '../../services/modules/adminProfile'
-import { adminAssessmentService } from '../../services/modules/adminAssessment'
+import { ref, computed, watch } from 'vue'
+import { adminUserService } from '@/services/modules/adminUser'
+import type { AdminUser, ProfileData, AssessmentData } from '@/types/admin'
+import UserAvatar from '@/components/UserAvatar.vue'
+import type { Dashboard, DietType } from '@/types/api'
+import { ACTIVITY_LABELS, GOAL_LABELS, GENDER_LABELS, DIET_LABELS } from '@/constants/labels'
+import { DIET_TYPE_OPTIONS } from '@/constants/assessmentOptions'
+import { ADMIN_MESSAGES, PROFILE_MESSAGES, VALIDATION_MESSAGES } from '@/constants/messages'
+import { useToast } from '@/composables/useToast'
+import { useAdminPerfil } from '@/composables/useAdminPerfil'
+import { useAdminTriagem } from '@/composables/useAdminTriagem'
 
-interface AdminUser {
-  id: number
-  name: string
-  email: string
-  type: 'ADMIN' | 'USER'
-  status: 'ACTIVE' | 'BLOCKED' | 'BANNED'
-}
+const ADMIN_ACTIVITY_OPTIONS = [
+  { value: 'SEDENTARY',    label: 'Sedentário' },
+  { value: 'LIGHT',        label: 'Leve' },
+  { value: 'MODERATE',     label: 'Moderado' },
+  { value: 'INTENSE',      label: 'Intenso' },
+  { value: 'VERY_INTENSE', label: 'Muito Intenso' },
+] as const
 
-interface ProfileData {
-  id: number
-  userId: number
-  dateOfBirth: string
-  gender: 'MALE' | 'FEMALE'
-  weightKg: number
-  heightCm: number
-  activityLevel: string
-}
+const ADMIN_GOAL_OPTIONS = [
+  { value: 'WEIGHT_LOSS',         label: 'Perda de Peso' },
+  { value: 'MUSCLE_GAIN',         label: 'Ganho de Massa' },
+  { value: 'MAINTENANCE',         label: 'Manutenção' },
+  { value: 'DIETARY_REEDUCATION', label: 'Reeducação Alimentar' },
+  { value: 'SPORTS_PERFORMANCE',  label: 'Performance Esportiva' },
+] as const
 
-interface AssessmentData {
-  id: number
-  userId: number
-  goal: string
-  dietaryRestrictions: string | null
-  allergies: string | null
-  healthConditions: string | null
-  mealsPerDay: number | null
-  targetWeightKg: number | null
-}
-
-type TabState<T> = T | 'loading' | 'not-found' | 'error'
-
-const props = defineProps<{ user: AdminUser }>()
+const props = defineProps<{ user: AdminUser; isSelf: boolean }>()
 const emit = defineEmits<{
   close: []
   updated: [user: AdminUser]
   deleted: [userId: number]
 }>()
 
+const toast = useToast()
+
 type Tab = 'dados' | 'perfil' | 'triagem' | 'acoes'
 const abaAtiva = ref<Tab>('dados')
 
 const erro = ref<string | null>(null)
-const sucesso = ref<string | null>(null)
 
 function clearMensagens() {
   erro.value = null
-  sucesso.value = null
 }
+
+// Dependências compartilhadas pelas abas Perfil/Triagem: o usuário-alvo e o banner de
+// erro único da modal. Cada aba é dona do próprio estado/CRUD via composable dedicado.
+const tabDeps = {
+  userId: computed(() => props.user.id),
+  erro,
+  clearError: clearMensagens,
+  toast,
+}
+// Triagem é criada antes do Perfil porque a exclusão de perfil cascateia sobre a triagem.
+const triagemTab = useAdminTriagem(tabDeps)
+const perfilTab = useAdminPerfil(tabDeps, triagemTab)
+
+const {
+  perfil, formPerfil, loadingPerfil, confirmExcluirPerfil, modoEdicaoPerfil, modoNovoPerfil,
+  perfilAusente, carregarPerfil, iniciarNovoPerfil, salvarPerfil, criarPerfil,
+  solicitarExclusaoPerfil, confirmarExcluirPerfil,
+} = perfilTab
+
+const {
+  triagem, formTriagem, loadingTriagem, confirmExcluirTriagem, modoEdicaoTriagem, modoNovaTriagem,
+  triagemExiste, carregarTriagem, iniciarNovaTriagem, salvarTriagem, criarTriagem,
+  confirmarExcluirTriagem,
+} = triagemTab
 
 // ═══════════════════════════════════════════
 // ABA DADOS
@@ -65,241 +81,23 @@ const formDados = ref({
 const loadingDados = ref(false)
 
 async function salvarDados() {
-  if (!formDados.value.name.trim()) { erro.value = 'Nome é obrigatório.'; return }
-  if (!formDados.value.email.includes('@')) { erro.value = 'E-mail inválido.'; return }
+  if (!formDados.value.name.trim()) { erro.value = VALIDATION_MESSAGES.REQUIRED_NAME; return }
+  if (!formDados.value.email.includes('@')) { erro.value = VALIDATION_MESSAGES.INVALID_EMAIL; return }
   clearMensagens()
   loadingDados.value = true
   try {
-    await adminUserService.update(props.user.id, formDados.value)
-    sucesso.value = 'Dados atualizados com sucesso.'
-    emit('updated', { ...props.user, ...formDados.value })
+    // Self-account: type/status are non-editable (backend rejects self demotion/deactivation),
+    // so they are stripped from the payload — only name/email, which self-edit allows, are sent.
+    const payload = props.isSelf
+      ? { name: formDados.value.name, email: formDados.value.email }
+      : formDados.value
+    await adminUserService.update(props.user.id, payload)
+    toast.success(ADMIN_MESSAGES.USER_UPDATE_SUCCESS)
+    emit('updated', { ...props.user, ...payload })
   } catch (err: any) {
-    erro.value = err.response?.data?.message ?? 'Erro ao salvar dados.'
+    erro.value = err.response?.data?.message ?? ADMIN_MESSAGES.USER_SAVE_ERROR
   } finally {
     loadingDados.value = false
-  }
-}
-
-// ═══════════════════════════════════════════
-// ABA PERFIL
-// ═══════════════════════════════════════════
-const perfil = ref<TabState<ProfileData>>('loading')
-const formPerfil = ref({ dateOfBirth: '', gender: 'MALE' as string, weightKg: '' as string | number, heightCm: '' as string | number, activityLevel: 'SEDENTARY' })
-const loadingPerfil = ref(false)
-const confirmExcluirPerfil = ref(false)
-const modoEdicaoPerfil = ref(false)
-const modoNovoPerfil = ref(false)
-
-async function carregarPerfil() {
-  perfil.value = 'loading'
-  try {
-    const data: ProfileData = await adminProfileService.findByUserId(props.user.id)
-    perfil.value = data
-    formPerfil.value = {
-      dateOfBirth: data.dateOfBirth?.slice(0, 10) ?? '',
-      gender: data.gender,
-      weightKg: data.weightKg,
-      heightCm: data.heightCm,
-      activityLevel: data.activityLevel,
-    }
-  } catch (err: any) {
-    perfil.value = err.response?.status === 404 ? 'not-found' : 'error'
-    if (err.response?.status !== 404) erro.value = 'Erro ao carregar perfil.'
-  }
-}
-
-function iniciarNovoPerfil() {
-  formPerfil.value = { dateOfBirth: '', gender: 'MALE', weightKg: '', heightCm: '', activityLevel: 'SEDENTARY' }
-  modoNovoPerfil.value = true
-}
-
-// Valida formulário de perfil antes de enviar
-function validarPerfil(): string | null {
-  const f = formPerfil.value
-  if (!f.dateOfBirth) return 'Data de nascimento é obrigatória.'
-  if (new Date(f.dateOfBirth as string) >= new Date()) return 'Data de nascimento deve estar no passado.'
-  if (!f.gender) return 'Gênero é obrigatório.'
-  const peso = Number(f.weightKg)
-  if (!f.weightKg || isNaN(peso) || peso < 20 || peso > 500) return 'Peso deve ser entre 20 e 500 kg.'
-  const altura = Number(f.heightCm)
-  if (!f.heightCm || isNaN(altura) || altura < 50 || altura > 300) return 'Altura deve ser entre 50 e 300 cm.'
-  if (!f.activityLevel) return 'Nível de atividade é obrigatório.'
-  return null
-}
-
-async function salvarPerfil() {
-  const erroValidacao = validarPerfil()
-  if (erroValidacao) { erro.value = erroValidacao; return }
-  clearMensagens()
-  loadingPerfil.value = true
-  try {
-    const updated: ProfileData = await adminProfileService.update((perfil.value as ProfileData).id, formPerfil.value)
-    perfil.value = updated
-    modoEdicaoPerfil.value = false
-    sucesso.value = 'Perfil atualizado com sucesso.'
-  } catch (err: any) {
-    erro.value = err.response?.data?.message ?? 'Erro ao salvar perfil.'
-  } finally {
-    loadingPerfil.value = false
-  }
-}
-
-async function criarPerfil() {
-  const erroValidacao = validarPerfil()
-  if (erroValidacao) { erro.value = erroValidacao; return }
-  clearMensagens()
-  loadingPerfil.value = true
-  try {
-    const created: ProfileData = await adminProfileService.create(props.user.id, formPerfil.value)
-    perfil.value = created
-    modoNovoPerfil.value = false
-    sucesso.value = 'Perfil criado com sucesso.'
-  } catch (err: any) {
-    erro.value = err.response?.data?.message ?? 'Erro ao criar perfil.'
-  } finally {
-    loadingPerfil.value = false
-  }
-}
-
-// Antes de mostrar confirmação de excluir perfil, garante que o estado da triagem é conhecido
-async function solicitarExclusaoPerfil() {
-  if (triagem.value === 'loading') {
-    await carregarTriagem()
-  }
-  confirmExcluirPerfil.value = true
-}
-
-// Exclusão de perfil com cascata condicional sobre triagem
-async function confirmarExcluirPerfil() {
-  clearMensagens()
-  confirmExcluirPerfil.value = false
-  loadingPerfil.value = true
-
-  const triagemExistente = typeof triagem.value === 'object' && triagem.value !== null
-
-  // Passo 1: excluir triagem vinculada, se existir
-  if (triagemExistente) {
-    try {
-      await adminAssessmentService.delete((triagem.value as AssessmentData).id)
-      triagem.value = 'not-found'
-    } catch (err: any) {
-      erro.value = (err.response?.data?.message ?? 'Erro ao excluir triagem vinculada.') + ' O perfil não foi excluído.'
-      loadingPerfil.value = false
-      return
-    }
-  }
-
-  // Passo 2: excluir o perfil
-  try {
-    await adminProfileService.delete((perfil.value as ProfileData).id)
-    perfil.value = 'not-found'
-    modoEdicaoPerfil.value = false
-    sucesso.value = triagemExistente
-      ? 'Perfil e triagem excluídos com sucesso.'
-      : 'Perfil excluído com sucesso.'
-  } catch (err: any) {
-    // Triagem já foi excluída mas perfil falhou — recarrega para estado consistente
-    erro.value = (err.response?.data?.message ?? 'Erro ao excluir perfil.') + ' A triagem já foi removida. Recarregando dados.'
-    await Promise.all([carregarPerfil(), carregarTriagem()])
-  } finally {
-    loadingPerfil.value = false
-  }
-}
-
-// ═══════════════════════════════════════════
-// ABA TRIAGEM
-// ═══════════════════════════════════════════
-const triagem = ref<TabState<AssessmentData>>('loading')
-const formTriagem = ref({ goal: 'WEIGHT_LOSS', dietaryRestrictions: '', allergies: '', healthConditions: '', mealsPerDay: null as number | null, targetWeightKg: null as number | null })
-const loadingTriagem = ref(false)
-const confirmExcluirTriagem = ref(false)
-const modoEdicaoTriagem = ref(false)
-const modoNovaTriagem = ref(false)
-
-async function carregarTriagem() {
-  triagem.value = 'loading'
-  try {
-    const data: AssessmentData = await adminAssessmentService.findByUserId(props.user.id)
-    triagem.value = data
-    formTriagem.value = {
-      goal: data.goal,
-      dietaryRestrictions: data.dietaryRestrictions ?? '',
-      allergies: data.allergies ?? '',
-      healthConditions: data.healthConditions ?? '',
-      mealsPerDay: data.mealsPerDay,
-      targetWeightKg: data.targetWeightKg,
-    }
-  } catch (err: any) {
-    triagem.value = err.response?.status === 404 ? 'not-found' : 'error'
-    if (err.response?.status !== 404) erro.value = 'Erro ao carregar triagem.'
-  }
-}
-
-function iniciarNovaTriagem() {
-  formTriagem.value = { goal: 'WEIGHT_LOSS', dietaryRestrictions: '', allergies: '', healthConditions: '', mealsPerDay: null, targetWeightKg: null }
-  modoNovaTriagem.value = true
-}
-
-// Valida formulário de triagem antes de enviar
-function validarTriagem(): string | null {
-  const f = formTriagem.value
-  if (!f.goal) return 'Objetivo nutricional é obrigatório.'
-  if (f.mealsPerDay !== null && f.mealsPerDay !== undefined) {
-    if (f.mealsPerDay < 1 || f.mealsPerDay > 10) return 'Refeições por dia deve ser entre 1 e 10.'
-  }
-  if (f.targetWeightKg !== null && f.targetWeightKg !== undefined && f.targetWeightKg <= 0) {
-    return 'Peso alvo deve ser positivo.'
-  }
-  return null
-}
-
-async function salvarTriagem() {
-  const erroValidacao = validarTriagem()
-  if (erroValidacao) { erro.value = erroValidacao; return }
-  clearMensagens()
-  loadingTriagem.value = true
-  try {
-    const updated: AssessmentData = await adminAssessmentService.update((triagem.value as AssessmentData).id, formTriagem.value)
-    triagem.value = updated
-    modoEdicaoTriagem.value = false
-    sucesso.value = 'Triagem atualizada com sucesso.'
-  } catch (err: any) {
-    erro.value = err.response?.data?.message ?? 'Erro ao salvar triagem.'
-  } finally {
-    loadingTriagem.value = false
-  }
-}
-
-async function criarTriagem() {
-  const erroValidacao = validarTriagem()
-  if (erroValidacao) { erro.value = erroValidacao; return }
-  clearMensagens()
-  loadingTriagem.value = true
-  try {
-    const created: AssessmentData = await adminAssessmentService.create(props.user.id, formTriagem.value)
-    triagem.value = created
-    modoNovaTriagem.value = false
-    sucesso.value = 'Triagem criada com sucesso.'
-  } catch (err: any) {
-    erro.value = err.response?.data?.message ?? 'Erro ao criar triagem.'
-  } finally {
-    loadingTriagem.value = false
-  }
-}
-
-async function confirmarExcluirTriagem() {
-  clearMensagens()
-  confirmExcluirTriagem.value = false
-  loadingTriagem.value = true
-  try {
-    await adminAssessmentService.delete((triagem.value as AssessmentData).id)
-    triagem.value = 'not-found'
-    modoEdicaoTriagem.value = false
-    sucesso.value = 'Triagem excluída.'
-  } catch (err: any) {
-    erro.value = err.response?.data?.message ?? 'Erro ao excluir triagem.'
-  } finally {
-    loadingTriagem.value = false
   }
 }
 
@@ -314,9 +112,9 @@ async function revogarSessoes() {
   loadingAcao.value = 'sessions'
   try {
     await adminUserService.revokeSessions(props.user.id)
-    sucesso.value = 'Sessões revogadas com sucesso.'
+    toast.success(ADMIN_MESSAGES.SESSION_REVOKE_SUCCESS)
   } catch (err: any) {
-    erro.value = err.response?.data?.message ?? 'Erro ao revogar sessões.'
+    erro.value = err.response?.data?.message ?? ADMIN_MESSAGES.SESSION_REVOKE_ERROR
   } finally {
     loadingAcao.value = null
   }
@@ -330,7 +128,7 @@ async function confirmarDeletarUsuario() {
     await adminUserService.delete(props.user.id)
     emit('deleted', props.user.id)
   } catch (err: any) {
-    erro.value = err.response?.data?.message ?? 'Erro ao deletar usuário.'
+    erro.value = err.response?.data?.message ?? ADMIN_MESSAGES.USER_DELETE_ERROR
     loadingAcao.value = null
   }
 }
@@ -350,20 +148,10 @@ watch(abaAtiva, (tab) => {
   modoNovaTriagem.value = false
 })
 
-function labelActivityLevel(v: string) {
-  const m: Record<string, string> = { SEDENTARY: 'Sedentário', LIGHT: 'Leve', MODERATE: 'Moderado', INTENSE: 'Intenso', VERY_INTENSE: 'Muito intenso' }
-  return m[v] ?? v
-}
-function labelGoal(v: string) {
-  const m: Record<string, string> = { WEIGHT_LOSS: 'Perda de Peso', MUSCLE_GAIN: 'Ganho de Massa', MAINTENANCE: 'Manutenção', DIETARY_REEDUCATION: 'Reeducação Alimentar', SPORTS_PERFORMANCE: 'Performance Esportiva' }
-  return m[v] ?? v
-}
-function labelGender(v: string) { return v === 'MALE' ? 'Masculino' : 'Feminino' }
-
-// Retorna true se sabemos com certeza que o perfil não existe (não está ainda carregando)
-const perfilAusente = () => perfil.value === 'not-found'
-// Retorna true se triagem é um objeto real (existe)
-const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !== null
+const labelActivityLevel = (v: string) => ACTIVITY_LABELS[v as Dashboard.ActivityLevel] ?? v
+const labelGoal = (v: string) => GOAL_LABELS[v as Dashboard.NutritionalGoal] ?? v
+const labelGender = (v: string) => GENDER_LABELS[v as Dashboard.Gender] ?? v
+const labelDiet = (v: DietType | null) => v ? DIET_LABELS[v] : '—'
 </script>
 
 <template>
@@ -373,7 +161,12 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
       <!-- Cabeçalho -->
       <header class="modal-header">
         <div class="modal-user-info">
-          <div class="modal-avatar">{{ user.name.charAt(0).toUpperCase() }}</div>
+          <UserAvatar
+            :name="user.name"
+            :email="user.email"
+            :avatar-url="user.avatarUrl"
+            :size="44"
+          />
           <div>
             <h2>{{ user.name }}</h2>
             <p>{{ user.email }}</p>
@@ -391,7 +184,6 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
       </nav>
 
       <!-- Mensagens globais da modal -->
-      <div v-if="sucesso" class="msg sucesso">{{ sucesso }} <button @click="sucesso = null">✕</button></div>
       <div v-if="erro" class="msg erro">{{ erro }} <button @click="erro = null">✕</button></div>
 
       <div class="modal-body">
@@ -411,14 +203,22 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
           <div class="field-row">
             <div class="field">
               <label>Tipo</label>
-              <select v-model="formDados.type">
+              <select
+                v-model="formDados.type"
+                :disabled="props.isSelf"
+                :title="props.isSelf ? 'Não é possível alterar o próprio tipo de conta' : undefined"
+              >
                 <option value="USER">USER</option>
                 <option value="ADMIN">ADMIN</option>
               </select>
             </div>
             <div class="field">
               <label>Status</label>
-              <select v-model="formDados.status">
+              <select
+                v-model="formDados.status"
+                :disabled="props.isSelf"
+                :title="props.isSelf ? 'Não é possível alterar o próprio status de conta' : undefined"
+              >
                 <option value="ACTIVE">ACTIVE</option>
                 <option value="BLOCKED">BLOCKED</option>
                 <option value="BANNED">BANNED</option>
@@ -436,11 +236,11 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
         <section v-else-if="abaAtiva === 'perfil'" class="aba">
 
           <div v-if="perfil === 'loading'" class="estado-centro">
-            <div class="spinner"></div><p>Carregando perfil…</p>
+            <div class="spinner"></div><p>{{ PROFILE_MESSAGES.LOADING }}</p>
           </div>
 
           <div v-else-if="perfil === 'error'" class="estado-centro">
-            <p class="estado-dim">Erro ao carregar perfil.</p>
+            <p class="estado-dim">{{ ADMIN_MESSAGES.PROFILE_LOAD_ERROR }}</p>
             <button class="btn-outline-sm" @click="carregarPerfil">Tentar novamente</button>
           </div>
 
@@ -538,10 +338,7 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
             <div class="field">
               <label>Nível de Atividade</label>
               <select v-model="formPerfil.activityLevel">
-                <option value="SEDENTARY">Sedentário</option>
-                <option value="MODERATE">Moderado</option>
-                <option value="INTENSE">Intenso</option>
-                <option value="VERY_INTENSE">Muito Intenso</option>
+                <option v-for="opt in ADMIN_ACTIVITY_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </div>
             <div class="aba-footer">
@@ -585,11 +382,11 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
         <section v-else-if="abaAtiva === 'triagem'" class="aba">
 
           <div v-if="triagem === 'loading'" class="estado-centro">
-            <div class="spinner"></div><p>Carregando triagem…</p>
+            <div class="spinner"></div><p>{{ ADMIN_MESSAGES.ASSESSMENT_LOADING }}</p>
           </div>
 
           <div v-else-if="triagem === 'error'" class="estado-centro">
-            <p class="estado-dim">Erro ao carregar triagem.</p>
+            <p class="estado-dim">{{ ADMIN_MESSAGES.ASSESSMENT_LOAD_ERROR }}</p>
             <button class="btn-outline-sm" @click="carregarTriagem">Tentar novamente</button>
           </div>
 
@@ -610,17 +407,20 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
               <div class="field">
                 <label>Objetivo</label>
                 <select v-model="formTriagem.goal">
-                  <option value="WEIGHT_LOSS">Perda de Peso</option>
-                  <option value="MUSCLE_GAIN">Ganho de Massa</option>
-                  <option value="MAINTENANCE">Manutenção</option>
-                  <option value="DIETARY_REEDUCATION">Reeducação Alimentar</option>
-                  <option value="SPORTS_PERFORMANCE">Performance Esportiva</option>
+                  <option v-for="opt in ADMIN_GOAL_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Preferência de dieta</label>
+                <select v-model="formTriagem.dietType">
+                  <option :value="null">— Não definida</option>
+                  <option v-for="opt in DIET_TYPE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                 </select>
               </div>
               <div class="field-row">
                 <div class="field">
                   <label>Refeições / dia</label>
-                  <input v-model.number="formTriagem.mealsPerDay" type="number" min="1" max="10" placeholder="ex: 5" />
+                  <input v-model.number="formTriagem.mealsPerDay" type="number" min="3" max="5" placeholder="ex: 4" />
                 </div>
                 <div class="field">
                   <label>Peso alvo (kg) <span class="label-opt">opcional</span></label>
@@ -652,6 +452,7 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
           <div v-else-if="!modoEdicaoTriagem">
             <div class="info-grid">
               <div class="info-item"><span>Objetivo</span><strong>{{ labelGoal((triagem as AssessmentData).goal) }}</strong></div>
+              <div class="info-item"><span>Preferência de dieta</span><strong>{{ labelDiet((triagem as AssessmentData).dietType) }}</strong></div>
               <div class="info-item"><span>Refeições / dia</span><strong>{{ (triagem as AssessmentData).mealsPerDay ?? '—' }}</strong></div>
               <div class="info-item"><span>Peso alvo</span><strong>{{ (triagem as AssessmentData).targetWeightKg ? (triagem as AssessmentData).targetWeightKg + ' kg' : '—' }}</strong></div>
               <div class="info-item"><span>Restrições</span><strong>{{ (triagem as AssessmentData).dietaryRestrictions || '—' }}</strong></div>
@@ -670,17 +471,20 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
             <div class="field">
               <label>Objetivo</label>
               <select v-model="formTriagem.goal">
-                <option value="WEIGHT_LOSS">Perda de Peso</option>
-                <option value="MUSCLE_GAIN">Ganho de Massa</option>
-                <option value="MAINTENANCE">Manutenção</option>
-                <option value="DIETARY_REEDUCATION">Reeducação Alimentar</option>
-                <option value="SPORTS_PERFORMANCE">Performance Esportiva</option>
+                <option v-for="opt in ADMIN_GOAL_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Preferência de dieta</label>
+              <select v-model="formTriagem.dietType">
+                <option :value="null">— Não definida</option>
+                <option v-for="opt in DIET_TYPE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </div>
             <div class="field-row">
               <div class="field">
                 <label>Refeições / dia</label>
-                <input v-model.number="formTriagem.mealsPerDay" type="number" min="1" max="10" />
+                <input v-model.number="formTriagem.mealsPerDay" type="number" min="3" max="5" />
               </div>
               <div class="field">
                 <label>Peso alvo (kg)</label>
@@ -718,6 +522,10 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
 
         <!-- ── ABA AÇÕES ── -->
         <section v-else-if="abaAtiva === 'acoes'" class="aba">
+          <div v-if="props.isSelf" class="msg-self-warn">
+            Você não pode executar estas ações na própria conta.
+          </div>
+
           <div class="acoes-lista">
 
             <div class="acao-card">
@@ -725,7 +533,12 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
                 <h4>Revogar Sessões</h4>
                 <p>Desconecta o usuário de todos os dispositivos imediatamente.</p>
               </div>
-              <button class="btn-acao" :disabled="loadingAcao === 'sessions'" @click="revogarSessoes">
+              <button
+                class="btn-acao"
+                :disabled="loadingAcao === 'sessions' || props.isSelf"
+                :title="props.isSelf ? 'Ação indisponível na própria conta' : undefined"
+                @click="revogarSessoes"
+              >
                 {{ loadingAcao === 'sessions' ? 'Revogando…' : 'Revogar Sessões' }}
               </button>
             </div>
@@ -735,13 +548,19 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
                 <h4>Deletar Usuário</h4>
                 <p>Remove permanentemente o usuário e todos os seus dados. Esta ação não pode ser desfeita.</p>
               </div>
-              <button class="btn-acao danger" :disabled="loadingAcao === 'delete'" @click="confirmDeletarUsuario = true">
+              <button
+                class="btn-acao danger"
+                :disabled="loadingAcao === 'delete' || props.isSelf"
+                :title="props.isSelf ? 'Ação indisponível na própria conta' : undefined"
+                @click="confirmDeletarUsuario = true"
+              >
                 {{ loadingAcao === 'delete' ? 'Deletando…' : 'Deletar Usuário' }}
               </button>
             </div>
 
           </div>
 
+          <!-- Inline confirmation intentional: modal.open() would stack over this AdminUserModal overlay -->
           <div v-if="confirmDeletarUsuario" class="confirm-inline danger">
             <p>Tem certeza? O usuário <strong>{{ user.name }}</strong> e todos os seus dados serão deletados permanentemente.</p>
             <div class="confirm-btns">
@@ -781,12 +600,6 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
   flex-shrink: 0;
 }
 .modal-user-info { display: flex; align-items: center; gap: 1rem; }
-.modal-avatar {
-  width: 44px; height: 44px; border-radius: 50%;
-  background: var(--amber-dim); border: 1px solid var(--amber-border);
-  color: var(--amber); font-weight: 800; font-size: 1.1rem;
-  display: flex; align-items: center; justify-content: center;
-}
 .modal-header h2 { font-size: 1.1rem; font-weight: 800; margin: 0; }
 .modal-header p { font-size: 0.8rem; color: var(--text-dim); margin: 0; }
 .btn-fechar { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.1rem; padding: 4px 8px; }
@@ -812,7 +625,6 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
   display: flex; justify-content: space-between; align-items: center;
   flex-shrink: 0;
 }
-.msg.sucesso { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color: #6ee7b7; }
 .msg.erro { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; }
 .msg button { background: transparent; border: none; color: inherit; cursor: pointer; font-size: 0.9rem; }
 
@@ -879,6 +691,16 @@ const triagemExiste = () => typeof triagem.value === 'object' && triagem.value !
 .confirm-btns { display: flex; gap: 0.75rem; justify-content: flex-end; }
 
 /* Aba Ações */
+.msg-self-warn {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fcd34d;
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  font-size: 0.83rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
 .acoes-lista { display: flex; flex-direction: column; gap: 1rem; }
 .acao-card {
   background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);

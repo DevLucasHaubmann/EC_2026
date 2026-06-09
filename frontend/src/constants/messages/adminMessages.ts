@@ -1,0 +1,16 @@
+export const ADMIN_MESSAGES = {
+  LOADING_USERS: 'Carregando usuários...',
+  USERS_LOAD_ERROR: 'Erro ao carregar usuários.',
+  USERS_EMPTY: 'Nenhum usuário encontrado.',
+  USER_UPDATE_SUCCESS: 'Dados atualizados com sucesso.',
+  USER_SAVE_ERROR: 'Erro ao salvar dados.',
+  USER_STATUS_SUCCESS: 'Status do usuário atualizado.',
+  USER_STATUS_ERROR: 'Erro ao atualizar status.',
+  USER_DELETE_SUCCESS: 'Usuário removido com sucesso.',
+  USER_DELETE_ERROR: 'Erro ao deletar usuário.',
+  SESSION_REVOKE_SUCCESS: 'Sessões revogadas com sucesso.',
+  SESSION_REVOKE_ERROR: 'Erro ao revogar sessões.',
+  PROFILE_LOAD_ERROR: 'Erro ao carregar perfil.',
+  ASSESSMENT_LOADING: 'Carregando triagem...',
+  ASSESSMENT_LOAD_ERROR: 'Erro ao carregar triagem.',
+} as const

@@ -17,6 +17,8 @@ public record MeResponse(
 
         User.UserState status,
 
+        String avatarUrl,
+
         @JsonProperty("profile")
         ProfileResponse profile,
 
@@ -31,6 +33,7 @@ public record MeResponse(
                 data.user().getEmail(),
                 data.user().getType(),
                 data.user().getStatus(),
+                data.user().getAvatarUrl(),
                 data.profile() != null ? ProfileResponse.from(data.profile()) : null,
                 data.assessment() != null ? AssessmentResponse.from(data.assessment()) : null
         );

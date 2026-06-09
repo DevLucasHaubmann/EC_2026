@@ -1,0 +1,16 @@
+export const VALIDATION_MESSAGES = {
+  REQUIRED_NAME: 'Nome é obrigatório.',
+  INVALID_EMAIL: 'E-mail inválido.',
+  REQUIRED_BIRTHDATE: 'Data de nascimento é obrigatória.',
+  PAST_BIRTHDATE: 'Data de nascimento deve estar no passado.',
+  REQUIRED_GENDER: 'Gênero é obrigatório.',
+  WEIGHT_RANGE: 'Peso deve ser entre 20 e 500 kg.',
+  HEIGHT_RANGE: 'Altura deve ser entre 50 e 300 cm.',
+  REQUIRED_ACTIVITY_LEVEL: 'Nível de atividade é obrigatório.',
+  REQUIRED_NUTRITION_GOAL: 'Objetivo nutricional é obrigatório.',
+  REQUIRED_DIET_TYPE: 'Tipo de dieta é obrigatório.',
+  REQUIRED_MEALS_PER_DAY: 'Número de refeições por dia é obrigatório.',
+  MEALS_PER_DAY_RANGE: 'Refeições por dia deve ser entre 3 e 5.',
+  TARGET_WEIGHT_POSITIVE: 'Peso alvo deve ser positivo.',
+  BIRTHDATE_TOO_OLD: 'Data de nascimento inválida. Idade máxima permitida: 120 anos.',
+} as const

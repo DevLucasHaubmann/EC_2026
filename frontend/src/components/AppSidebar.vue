@@ -1,19 +1,37 @@
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { useAuthStore } from '@/stores/auth'
+import { useMeStore } from '@/stores/me'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const meStore = useMeStore()
 
 const links = [
-  { name: 'dashboard', label: 'Dashboard',   wip: false },
-  { name: 'dieta',     label: 'Minha Dieta', wip: false },
-  { name: 'perfil',    label: 'Perfil',      wip: false },
-  { name: 'evolucao',  label: 'Evolução',    wip: true  },
+  { name: 'dashboard',    label: 'Dashboard'         },
+  { name: 'dieta',        label: 'Minha Dieta'       },
+  { name: 'dieta-diaria', label: 'Efetivar Refeição' },
+  { name: 'triagem',      label: 'Triagem'            },
+  { name: 'evolucao',     label: 'Evolução'           },
+  { name: 'historico',    label: 'Histórico'          },
+  { name: 'perfil',       label: 'Perfil'             },
 ]
 
+// When onboarding is complete, the triagem link is hidden: no reason to re-do it.
+// While loading (me still null), triagem stays visible so the user is never stuck.
+const visibleLinks = computed(() =>
+  meStore.onboardingComplete
+    ? links.filter((l) => l.name !== 'triagem')
+    : links,
+)
+
+onMounted(() => meStore.load())
+
 const logout = async () => {
+  meStore.clear()
   await authStore.logout()
   router.push({ name: 'auth' })
 }
@@ -25,16 +43,25 @@ const logout = async () => {
       Tukan <span class="brand-dot"></span>
     </div>
 
+    <div v-if="meStore.me" class="sidebar-user">
+      <UserAvatar
+        :name="meStore.me.name"
+        :email="meStore.me.email"
+        :avatar-url="meStore.me.avatarUrl"
+        :size="36"
+      />
+      <span class="sidebar-user-name">{{ meStore.me.name }}</span>
+    </div>
+
     <nav class="sidebar-nav">
       <RouterLink
-        v-for="link in links"
+        v-for="link in visibleLinks"
         :key="link.name"
         :to="{ name: link.name }"
         class="nav-link"
         :class="{ active: route.name === link.name }"
       >
         {{ link.label }}
-        <span v-if="link.wip" class="nav-wip-badge">Em dev.</span>
       </RouterLink>
       <RouterLink
         v-if="authStore.isAdmin"
@@ -92,6 +119,28 @@ const logout = async () => {
   display: inline-block;
 }
 
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.6rem 0.5rem;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  min-width: 0;
+}
+
+.sidebar-user-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -118,22 +167,6 @@ const logout = async () => {
 .nav-link.active {
   background: rgba(16, 185, 129, 0.12);
   color: var(--accent);
-}
-
-.nav-wip-badge {
-  display: inline-block;
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  border-radius: 5px;
-  padding: 1px 5px;
-  margin-left: 6px;
-  vertical-align: middle;
-  line-height: 1.4;
 }
 
 .nav-link-admin {
@@ -192,6 +225,10 @@ const logout = async () => {
   .sidebar-brand {
     margin-bottom: 0;
     flex-shrink: 0;
+  }
+
+  .sidebar-user {
+    display: none;
   }
 
   .sidebar-nav {

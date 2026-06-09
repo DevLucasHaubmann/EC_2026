@@ -1,10 +1,5 @@
 # Build output
-backend/target/
-frontend/dist/
-frontend/node_modules/
-frontend/.vite/
-build/
-out/
+target/
 
 # Logs
 *.log
@@ -25,15 +20,4 @@ Thumbs.db
 .sts4-cache/
 
 # Local/sensitive files
-backend/src/main/resources/application-local.properties
-.env
-.env.*
-!.env.example
-
-# Claude / local assistant files
-.claude/
-CLAUDE.md
-
-# Keep essential root files versioned
-!.gitignore
-!README.md
+src/main/resources/application-local.properties

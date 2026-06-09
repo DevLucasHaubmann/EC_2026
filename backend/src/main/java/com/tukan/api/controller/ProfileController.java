@@ -27,9 +27,10 @@ public class ProfileController {
     private final NutritionalProfileService nutritionalProfileService;
     private final OnboardingService onboardingService;
 
-    // ── Self-service (qualquer usuário autenticado) ───────────────
+    // ── Self-service (apenas usuário final; ADMIN não tem perfil nutricional próprio) ──
 
     @PostMapping("/me")
+    @PreAuthorize("hasAuthority('USER')")
     public ResponseEntity<ProfileCreatedResponse> createOwn(
             @RequestBody @Valid CreateProfileRequest request,
             Authentication authentication) {
@@ -40,12 +41,14 @@ public class ProfileController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize("hasAuthority('USER')")
     public ResponseEntity<ProfileResponse> findOwn(Authentication authentication) {
         return ResponseEntity.ok(
                 ProfileResponse.from(nutritionalProfileService.findOwn(authentication.getName())));
     }
 
     @PutMapping("/me")
+    @PreAuthorize("hasAuthority('USER')")
     public ResponseEntity<ProfileResponse> updateOwn(
             @RequestBody @Valid UpdateProfileRequest request,
             Authentication authentication) {

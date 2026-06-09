@@ -1,6 +1,5 @@
 package com.tukan.api.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tukan.api.dto.FeedbackRequest;
 import com.tukan.api.dto.mealplan.DailyMealPlan;
 import com.tukan.api.dto.mealplan.MealPlanContext;
@@ -12,15 +11,16 @@ import com.tukan.api.exception.BusinessException;
 import com.tukan.api.repository.RecommendationFeedbackRepository;
 import com.tukan.api.repository.RecommendationRepository;
 import com.tukan.api.service.mealplan.MealPlanAiService;
-import com.tukan.api.service.mealplan.MealPlanEngine;
+import com.tukan.api.service.mealplan.MealPlanGenerationResult;
+import com.tukan.api.service.mealplan.MealPlanPreparation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
@@ -31,8 +31,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,19 +40,19 @@ class AiRecommendationServiceTest {
     private UserService userService;
 
     @Mock
+    private MealPlanReadinessValidator readinessValidator;
+
+    @Mock
     private MealPlanAiService mealPlanAiService;
 
     @Mock
-    private MealPlanEngine mealPlanEngine;
+    private RecommendationPersistenceService recommendationPersistenceService;
 
     @Mock
     private RecommendationRepository recommendationRepository;
 
     @Mock
     private RecommendationFeedbackRepository recommendationFeedbackRepository;
-
-    @Spy
-    private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
     private AiRecommendationService aiRecommendationService;
@@ -73,9 +71,9 @@ class AiRecommendationServiceTest {
         return new MealPlanContext(null, null, 2000, Map.of(), Map.of());
     }
 
-    private MealPlanRecommendationResponse sampleResponse() {
+    private MealPlanGenerationResult sampleResult() {
         DailyMealPlan plan = new DailyMealPlan(2000, "MAINTENANCE", Collections.emptyList());
-        return new MealPlanRecommendationResponse(
+        MealPlanRecommendationResponse response = new MealPlanRecommendationResponse(
                 "COMPLETE",
                 "Plano equilibrado.",
                 plan,
@@ -85,20 +83,12 @@ class AiRecommendationServiceTest {
                 "gemini",
                 "gemini-2.0-flash"
         );
+        return new MealPlanGenerationResult(response, sampleContext());
     }
 
-    private MealPlanRecommendationResponse fallbackResponse() {
-        DailyMealPlan plan = new DailyMealPlan(2000, "MAINTENANCE", Collections.emptyList());
-        return new MealPlanRecommendationResponse(
-                "PARTIAL",
-                "Plano alimentar gerado com sucesso. O complemento da IA está temporariamente indisponível.",
-                plan,
-                Map.of(),
-                Collections.emptyList(),
-                Collections.emptyList(),
-                "fallback",
-                "none"
-        );
+    private MealPlanPreparation samplePreparation() {
+        return new MealPlanPreparation(
+                new DailyMealPlan(2000, "MAINTENANCE", Collections.emptyList()), sampleContext());
     }
 
     private Recommendation savedRecommendation(User owner, Recommendation.RecommendationStatus status) {
@@ -114,113 +104,97 @@ class AiRecommendationServiceTest {
     @DisplayName("generateAndSave")
     class GenerateAndSave {
 
+        // Orchestration only. The transactional boundaries of each phase (prepare =
+        // read-only, persist = write) and the absence of a transaction during enrich
+        // are enforced by Spring proxies and verified by review, not by unit tests.
+
         @Test
-        @DisplayName("should generate, save and return recommendation with meal plan")
-        void shouldGenerateSaveAndReturnRecommendation() {
+        @DisplayName("should orchestrate prepare, enrich and persist and return the persisted recommendation")
+        void shouldOrchestratePhasesAndReturnPersistedRecommendation() {
+            MealPlanPreparation preparation = samplePreparation();
+            MealPlanGenerationResult result = sampleResult();
+            Recommendation persisted = savedRecommendation(user, Recommendation.RecommendationStatus.GENERATED);
+
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
-            when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
-                    .thenReturn(Collections.emptyList());
-            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResponse());
-            when(mealPlanEngine.buildContext("lucas@email.com")).thenReturn(sampleContext());
-            when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> {
-                Recommendation r = inv.getArgument(0);
-                r.setId(1);
-                return r;
-            });
+            when(mealPlanAiService.prepare("lucas@email.com")).thenReturn(preparation);
+            when(mealPlanAiService.enrich(preparation)).thenReturn(result);
+            when(recommendationPersistenceService.persist("lucas@email.com", result)).thenReturn(persisted);
 
-            Recommendation result = aiRecommendationService.generateAndSave("lucas@email.com");
+            Recommendation returned = aiRecommendationService.generateAndSave("lucas@email.com");
 
-            assertThat(result.getSummary()).isEqualTo("Plano equilibrado.");
-            assertThat(result.getPlanJson()).contains("MAINTENANCE");
-            assertThat(result.getProvider()).isEqualTo("gemini");
-            assertThat(result.getModel()).isEqualTo("gemini-2.0-flash");
-            assertThat(result.getStatus()).isEqualTo(Recommendation.RecommendationStatus.GENERATED);
-            assertThat(result.getUser()).isEqualTo(user);
+            assertThat(returned).isSameAs(persisted);
         }
 
         @Test
-        @DisplayName("should persist tips, alerts and meal explanations as JSON")
-        void shouldPersistTipsAlertsAndMealExplanations() {
-            when(userService.findByEmail("lucas@email.com")).thenReturn(user);
-            when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
-                    .thenReturn(Collections.emptyList());
-            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResponse());
-            when(mealPlanEngine.buildContext("lucas@email.com")).thenReturn(sampleContext());
-            when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> inv.getArgument(0));
-
-            Recommendation result = aiRecommendationService.generateAndSave("lucas@email.com");
-
-            assertThat(result.getTipsJson()).contains("Beba água");
-            assertThat(result.getAlertsJson()).contains("Consulte um nutricionista");
-            assertThat(result.getMealExplanationsJson()).contains("BREAKFAST");
-            assertThat(result.getStatus()).isEqualTo(Recommendation.RecommendationStatus.GENERATED);
-        }
-
-        @Test
-        @DisplayName("should persist PARTIAL status when generation uses fallback")
-        void shouldPersistStatusGeneratedWhenFallback() {
-            when(userService.findByEmail("lucas@email.com")).thenReturn(user);
-            when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
-                    .thenReturn(Collections.emptyList());
-            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(fallbackResponse());
-            when(mealPlanEngine.buildContext("lucas@email.com")).thenReturn(sampleContext());
-            when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> inv.getArgument(0));
-
-            Recommendation result = aiRecommendationService.generateAndSave("lucas@email.com");
-
-            assertThat(result.getProvider()).isEqualTo("fallback");
-            assertThat(result.getStatus()).isEqualTo(Recommendation.RecommendationStatus.GENERATED);
-        }
-
-        @Test
-        @DisplayName("should archive GENERATED recommendation before generating a new one")
-        void shouldArchivePreviousGeneratedRecommendationOnNewGeneration() {
-            Recommendation existing = savedRecommendation(user, Recommendation.RecommendationStatus.GENERATED);
+        @DisplayName("should run the phases in order, feeding each one with the previous output")
+        void shouldRunPhasesInOrder() {
+            MealPlanPreparation preparation = samplePreparation();
+            MealPlanGenerationResult result = sampleResult();
 
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
-            when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
-                    .thenReturn(List.of(existing));
-            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResponse());
-            when(mealPlanEngine.buildContext("lucas@email.com")).thenReturn(sampleContext());
-            when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(mealPlanAiService.prepare("lucas@email.com")).thenReturn(preparation);
+            when(mealPlanAiService.enrich(preparation)).thenReturn(result);
+            when(recommendationPersistenceService.persist("lucas@email.com", result))
+                    .thenReturn(savedRecommendation(user, Recommendation.RecommendationStatus.GENERATED));
 
             aiRecommendationService.generateAndSave("lucas@email.com");
 
-            assertThat(existing.getStatus()).isEqualTo(Recommendation.RecommendationStatus.ARCHIVED);
-            verify(recommendationRepository).saveAll(List.of(existing));
+            InOrder inOrder = inOrder(readinessValidator, mealPlanAiService, recommendationPersistenceService);
+            inOrder.verify(readinessValidator).validate(1);
+            inOrder.verify(mealPlanAiService).prepare("lucas@email.com");
+            inOrder.verify(mealPlanAiService).enrich(preparation);
+            inOrder.verify(recommendationPersistenceService).persist("lucas@email.com", result);
         }
 
         @Test
-        @DisplayName("should archive VIEWED recommendation before generating a new one")
-        void shouldArchivePreviousViewedRecommendationOnNewGeneration() {
-            Recommendation existing = savedRecommendation(user, Recommendation.RecommendationStatus.VIEWED);
+        @DisplayName("should not access the recommendation repository directly during generation")
+        void shouldNotAccessRepositoryDirectly() {
+            MealPlanPreparation preparation = samplePreparation();
+            MealPlanGenerationResult result = sampleResult();
 
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
-            when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
-                    .thenReturn(List.of(existing));
-            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResponse());
-            when(mealPlanEngine.buildContext("lucas@email.com")).thenReturn(sampleContext());
-            when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(mealPlanAiService.prepare("lucas@email.com")).thenReturn(preparation);
+            when(mealPlanAiService.enrich(preparation)).thenReturn(result);
+            when(recommendationPersistenceService.persist("lucas@email.com", result))
+                    .thenReturn(savedRecommendation(user, Recommendation.RecommendationStatus.GENERATED));
 
             aiRecommendationService.generateAndSave("lucas@email.com");
 
-            assertThat(existing.getStatus()).isEqualTo(Recommendation.RecommendationStatus.ARCHIVED);
-            verify(recommendationRepository).saveAll(List.of(existing));
+            // Persistence is delegated entirely to RecommendationPersistenceService.
+            verifyNoInteractions(recommendationRepository);
         }
 
         @Test
-        @DisplayName("should not call saveAll when there are no active recommendations to archive")
-        void shouldNotCallSaveAllWhenNoActiveRecommendationsExist() {
+        @DisplayName("should not enrich or persist when the preparation phase fails")
+        void shouldNotEnrichOrPersistWhenPrepareFails() {
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
-            when(recommendationRepository.findByUserIdAndStatusIn(eq(1), anyList()))
-                    .thenReturn(Collections.emptyList());
-            when(mealPlanAiService.generate("lucas@email.com")).thenReturn(sampleResponse());
-            when(mealPlanEngine.buildContext("lucas@email.com")).thenReturn(sampleContext());
-            when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(mealPlanAiService.prepare("lucas@email.com"))
+                    .thenThrow(new BusinessException("Perfil incompleto.", org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY));
 
-            aiRecommendationService.generateAndSave("lucas@email.com");
+            assertThatThrownBy(() -> aiRecommendationService.generateAndSave("lucas@email.com"))
+                    .isInstanceOf(BusinessException.class);
 
-            verify(recommendationRepository).saveAll(Collections.emptyList());
+            verify(mealPlanAiService, never()).enrich(any());
+            verifyNoInteractions(recommendationPersistenceService);
+        }
+
+        @Test
+        @DisplayName("should reject an incomplete assessment via the readiness gate before reaching the engine")
+        void shouldRejectIncompleteAssessmentBeforeEngine() {
+            // The synchronous flow must use the same readiness gate as the async flow: an incomplete
+            // triage fails with a clear error and never reaches MealPlanAiService (the engine).
+            when(userService.findByEmail("lucas@email.com")).thenReturn(user);
+            doThrow(new BusinessException(
+                    "Triagem incompleta. Informe objetivo, tipo de dieta e número de refeições antes de gerar um plano alimentar.",
+                    org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY))
+                    .when(readinessValidator).validate(1);
+
+            assertThatThrownBy(() -> aiRecommendationService.generateAndSave("lucas@email.com"))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("Triagem incompleta");
+
+            verifyNoInteractions(mealPlanAiService);
+            verifyNoInteractions(recommendationPersistenceService);
         }
     }
 
@@ -229,33 +203,58 @@ class AiRecommendationServiceTest {
     class FindLatest {
 
         @Test
-        @DisplayName("should return the latest recommendation for the user")
-        void shouldReturnLatestRecommendation() {
-            Recommendation recommendation = new Recommendation();
+        @DisplayName("should return the latest active (GENERATED) recommendation")
+        void shouldReturnLatestActiveRecommendation() {
+            // given
+            Recommendation recommendation = savedRecommendation(user, Recommendation.RecommendationStatus.GENERATED);
             recommendation.setId(1);
-            recommendation.setUser(user);
-            recommendation.setSummary("Resumo");
 
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
-            when(recommendationRepository.findFirstByUserIdOrderByCreatedAtDesc(1))
+            when(recommendationRepository.findFirstByUserIdAndStatusInOrderByCreatedAtDesc(
+                    1, Recommendation.ACTIVE_STATUSES))
                     .thenReturn(Optional.of(recommendation));
 
+            // when
             Recommendation result = aiRecommendationService.findLatest("lucas@email.com");
 
+            // then
             assertThat(result.getId()).isEqualTo(1);
+            assertThat(result.getStatus()).isIn(Recommendation.ACTIVE_STATUSES);
         }
 
         @Test
-        @DisplayName("should throw BusinessException when no recommendation exists")
-        void shouldThrowWhenNoRecommendationFound() {
+        @DisplayName("should return VIEWED recommendation as active diet")
+        void shouldReturnViewedRecommendationAsActiveDiet() {
+            // given
+            Recommendation recommendation = savedRecommendation(user, Recommendation.RecommendationStatus.VIEWED);
+
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
-            when(recommendationRepository.findFirstByUserIdOrderByCreatedAtDesc(1))
+            when(recommendationRepository.findFirstByUserIdAndStatusInOrderByCreatedAtDesc(
+                    1, Recommendation.ACTIVE_STATUSES))
+                    .thenReturn(Optional.of(recommendation));
+
+            // when
+            Recommendation result = aiRecommendationService.findLatest("lucas@email.com");
+
+            // then
+            assertThat(result.getStatus()).isEqualTo(Recommendation.RecommendationStatus.VIEWED);
+        }
+
+        @Test
+        @DisplayName("should not return ARCHIVED recommendation — throws when only ARCHIVED exists")
+        void shouldNotReturnArchivedRecommendationAsActiveDiet() {
+            // given — repository returns empty because the filter excludes ARCHIVED
+            when(userService.findByEmail("lucas@email.com")).thenReturn(user);
+            when(recommendationRepository.findFirstByUserIdAndStatusInOrderByCreatedAtDesc(
+                    1, Recommendation.ACTIVE_STATUSES))
                     .thenReturn(Optional.empty());
 
+            // when / then
             assertThatThrownBy(() -> aiRecommendationService.findLatest("lucas@email.com"))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("Nenhuma recomendação encontrada");
+                    .hasMessageContaining("dieta ativa");
         }
+
     }
 
     @Nested
@@ -395,23 +394,24 @@ class AiRecommendationServiceTest {
     }
 
     @Nested
-    @DisplayName("addFeedback")
-    class AddFeedback {
+    @DisplayName("upsertFeedback")
+    class UpsertFeedback {
+
+        private FeedbackRequest validRequest() {
+            return new FeedbackRequest(4, List.of(RecommendationFeedback.FeedbackTag.PRACTICAL), List.of(), "Gostei bastante.");
+        }
 
         @Test
-        @DisplayName("should register feedback and transition GENERATED to VIEWED")
-        void shouldRegisterFeedbackAndTransitionGeneratedToViewed() {
+        @DisplayName("should create feedback and transition GENERATED to VIEWED")
+        void shouldCreateFeedbackAndTransitionGeneratedToViewed() {
             Recommendation recommendation = new Recommendation();
             recommendation.setId(1);
             recommendation.setUser(user);
             recommendation.setStatus(Recommendation.RecommendationStatus.GENERATED);
 
-            FeedbackRequest request = new FeedbackRequest(
-                    RecommendationFeedback.Rating.LIKED, "Útil", "Vou seguir");
-
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
             when(recommendationRepository.findByIdAndUserId(1, 1)).thenReturn(Optional.of(recommendation));
-            when(recommendationFeedbackRepository.existsByRecommendationId(1)).thenReturn(false);
+            when(recommendationFeedbackRepository.findByRecommendationId(1)).thenReturn(Optional.empty());
             when(recommendationRepository.save(any(Recommendation.class))).thenAnswer(inv -> inv.getArgument(0));
             when(recommendationFeedbackRepository.save(any(RecommendationFeedback.class))).thenAnswer(inv -> {
                 RecommendationFeedback f = inv.getArgument(0);
@@ -419,89 +419,118 @@ class AiRecommendationServiceTest {
                 return f;
             });
 
-            RecommendationFeedback result = aiRecommendationService.addFeedback(1, "lucas@email.com", request);
+            RecommendationFeedback result = aiRecommendationService.upsertFeedback(1, "lucas@email.com", validRequest());
 
-            assertThat(result.getRating()).isEqualTo(RecommendationFeedback.Rating.LIKED);
-            assertThat(result.getReason()).isEqualTo("Útil");
-            assertThat(result.getObservation()).isEqualTo("Vou seguir");
+            assertThat(result.getRating()).isEqualTo(4);
             assertThat(recommendation.getStatus()).isEqualTo(Recommendation.RecommendationStatus.VIEWED);
             verify(recommendationRepository).save(recommendation);
         }
 
         @Test
-        @DisplayName("should register feedback without changing status when already VIEWED")
-        void shouldRegisterFeedbackWithoutChangingStatusWhenAlreadyViewed() {
+        @DisplayName("should update existing feedback without changing status when VIEWED")
+        void shouldUpdateFeedbackWithoutChangingStatusWhenViewed() {
             Recommendation recommendation = new Recommendation();
             recommendation.setId(1);
             recommendation.setUser(user);
             recommendation.setStatus(Recommendation.RecommendationStatus.VIEWED);
 
-            FeedbackRequest request = new FeedbackRequest(
-                    RecommendationFeedback.Rating.LIKED, null, null);
+            RecommendationFeedback existing = new RecommendationFeedback();
+            existing.setId(1);
+            existing.setRecommendation(recommendation);
+            existing.setRating(2);
+
+            FeedbackRequest updateRequest = new FeedbackRequest(5, List.of(), List.of(), "Atualizado.");
 
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
             when(recommendationRepository.findByIdAndUserId(1, 1)).thenReturn(Optional.of(recommendation));
-            when(recommendationFeedbackRepository.existsByRecommendationId(1)).thenReturn(false);
+            when(recommendationFeedbackRepository.findByRecommendationId(1)).thenReturn(Optional.of(existing));
             when(recommendationFeedbackRepository.save(any(RecommendationFeedback.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            aiRecommendationService.addFeedback(1, "lucas@email.com", request);
+            RecommendationFeedback result = aiRecommendationService.upsertFeedback(1, "lucas@email.com", updateRequest);
 
+            assertThat(result.getRating()).isEqualTo(5);
+            assertThat(result.getComment()).isEqualTo("Atualizado.");
             assertThat(recommendation.getStatus()).isEqualTo(Recommendation.RecommendationStatus.VIEWED);
             verify(recommendationRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("should register feedback without changing status when ARCHIVED")
-        void shouldRegisterFeedbackWithoutChangingStatusWhenArchived() {
+        @DisplayName("should throw BusinessException when recommendation is ARCHIVED")
+        void shouldThrowWhenArchivedOnFeedback() {
             Recommendation recommendation = new Recommendation();
             recommendation.setId(1);
             recommendation.setUser(user);
             recommendation.setStatus(Recommendation.RecommendationStatus.ARCHIVED);
 
-            FeedbackRequest request = new FeedbackRequest(
-                    RecommendationFeedback.Rating.DISLIKED, "Não gostei", null);
-
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
             when(recommendationRepository.findByIdAndUserId(1, 1)).thenReturn(Optional.of(recommendation));
-            when(recommendationFeedbackRepository.existsByRecommendationId(1)).thenReturn(false);
-            when(recommendationFeedbackRepository.save(any(RecommendationFeedback.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            aiRecommendationService.addFeedback(1, "lucas@email.com", request);
-
-            assertThat(recommendation.getStatus()).isEqualTo(Recommendation.RecommendationStatus.ARCHIVED);
-            verify(recommendationRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("should throw BusinessException when feedback already exists")
-        void shouldThrowWhenFeedbackAlreadyExists() {
-            Recommendation recommendation = new Recommendation();
-            recommendation.setId(1);
-            recommendation.setUser(user);
-            recommendation.setStatus(Recommendation.RecommendationStatus.GENERATED);
-
-            FeedbackRequest request = new FeedbackRequest(
-                    RecommendationFeedback.Rating.DISLIKED, null, null);
-
-            when(userService.findByEmail("lucas@email.com")).thenReturn(user);
-            when(recommendationRepository.findByIdAndUserId(1, 1)).thenReturn(Optional.of(recommendation));
-            when(recommendationFeedbackRepository.existsByRecommendationId(1)).thenReturn(true);
-
-            assertThatThrownBy(() -> aiRecommendationService.addFeedback(1, "lucas@email.com", request))
+            assertThatThrownBy(() -> aiRecommendationService.upsertFeedback(1, "lucas@email.com", validRequest()))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("já possui feedback");
+                    .hasMessageContaining("arquivadas");
         }
 
         @Test
         @DisplayName("should throw BusinessException when recommendation does not belong to user")
         void shouldThrowWhenOwnershipFailsOnFeedback() {
-            FeedbackRequest request = new FeedbackRequest(
-                    RecommendationFeedback.Rating.LIKED, null, null);
-
             when(userService.findByEmail("lucas@email.com")).thenReturn(user);
             when(recommendationRepository.findByIdAndUserId(99, 1)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> aiRecommendationService.addFeedback(99, "lucas@email.com", request))
+            assertThatThrownBy(() -> aiRecommendationService.upsertFeedback(99, "lucas@email.com", validRequest()))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("não encontrada");
+        }
+    }
+
+    @Nested
+    @DisplayName("getFeedback")
+    class GetFeedback {
+
+        @Test
+        @DisplayName("should return existing feedback when it exists")
+        void shouldReturnFeedbackWhenExists() {
+            Recommendation recommendation = new Recommendation();
+            recommendation.setId(1);
+            recommendation.setUser(user);
+
+            RecommendationFeedback feedback = new RecommendationFeedback();
+            feedback.setId(1);
+            feedback.setRecommendation(recommendation);
+            feedback.setRating(4);
+
+            when(userService.findByEmail("lucas@email.com")).thenReturn(user);
+            when(recommendationRepository.findByIdAndUserId(1, 1)).thenReturn(Optional.of(recommendation));
+            when(recommendationFeedbackRepository.findByRecommendationId(1)).thenReturn(Optional.of(feedback));
+
+            Optional<RecommendationFeedback> result = aiRecommendationService.getFeedback(1, "lucas@email.com");
+
+            assertThat(result).isPresent();
+            assertThat(result.get().getRating()).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("should return empty when no feedback exists")
+        void shouldReturnEmptyWhenNoFeedback() {
+            Recommendation recommendation = new Recommendation();
+            recommendation.setId(1);
+            recommendation.setUser(user);
+
+            when(userService.findByEmail("lucas@email.com")).thenReturn(user);
+            when(recommendationRepository.findByIdAndUserId(1, 1)).thenReturn(Optional.of(recommendation));
+            when(recommendationFeedbackRepository.findByRecommendationId(1)).thenReturn(Optional.empty());
+
+            Optional<RecommendationFeedback> result = aiRecommendationService.getFeedback(1, "lucas@email.com");
+
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("should throw BusinessException when recommendation does not belong to user")
+        void shouldThrowWhenOwnershipFailsOnGetFeedback() {
+            when(userService.findByEmail("lucas@email.com")).thenReturn(user);
+            when(recommendationRepository.findByIdAndUserId(99, 1)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> aiRecommendationService.getFeedback(99, "lucas@email.com"))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("não encontrada");
         }

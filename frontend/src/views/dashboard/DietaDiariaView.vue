@@ -1,52 +1,180 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from "../../stores/auth";
-import MockDataBanner from '../../components/ui/MockDataBanner.vue';
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { aiService } from '@/services/modules/aiRecommendation'
+import { mealLogService } from '@/services/modules/mealLog'
+import { useToast } from '@/composables/useToast'
+import { MEAL_LABELS } from '@/constants/labels'
+import type { MealType, Recommendation, MealLog } from '@/types/api'
 
-const router = useRouter();
-const authStore = useAuthStore();
+const router = useRouter()
+const authStore = useAuthStore()
+const toast = useToast()
 
-// RF013: Sugestões da IA vindas do Plano Semanal
-const sugestoesIA = ref([
-  { id: 101, nome: 'Wrap de frango', kcal: 320, prot: '25g', carb: '30g', tipo: 'Almoço' },
-  { id: 102, nome: 'Bowl vegetariano', kcal: 410, prot: '15g', carb: '55g', tipo: 'Jantar' },
-  { id: 103, nome: 'Shake proteico', kcal: 220, prot: '30g', carb: '10g', tipo: 'Lanche' },
-]);
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-// RF015: Log de refeições efetivadas (consumidas)
-const refeicoesConsumidas = ref([
-  { id: 1, nome: 'Café da manhã', descricao: 'Iogurte com aveia', kcal: 420, horario: '08:10' },
-]);
+interface MealCard {
+  mealType: string
+  optionNumber: number
+  calories: number
+  protein: number
+  carbs: number
+  items: Recommendation.MealPlanFoodItem[]
+}
 
-const totalKcal = computed(() => {
-  return refeicoesConsumidas.value.reduce((acc, item) => acc + item.kcal, 0);
-});
+// ── State ─────────────────────────────────────────────────────────────────────
 
-// Ações
-const efetivarSugestao = (sugestao: any) => {
-  const agora = new Date();
-  const horario = `${agora.getHours()}:${agora.getMinutes().toString().padStart(2, '0')}`;
-  refeicoesConsumidas.value.push({
-    id: Date.now(),
-    nome: sugestao.tipo,
-    descricao: sugestao.nome,
-    kcal: sugestao.kcal,
-    horario: horario
-  });
-};
+const loading = ref(false)
+const error = ref<string | null>(null)
+const logsError = ref<string | null>(null)
+const recommendation = ref<Recommendation.Response | null>(null)
+const logs = ref<MealLog.Response[]>([])
+// Tracks mealTypes with an in-flight POST to prevent double-tap races.
+const loggingInProgress = reactive(new Set<string>())
 
-const removerRefeicao = (id: number) => {
-  refeicoesConsumidas.value = refeicoesConsumidas.value.filter(r => r.id !== id);
-};
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const voltar = () => router.back();
-const logout = () => authStore.logout();
+function getLocalDate(): string {
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+}
+
+function mealLabel(type: string): string {
+  return MEAL_LABELS[type as MealType] ?? type
+}
+
+// createdAt is expected to be a UTC ISO-8601 string from the backend.
+function formatTime(createdAt: string): string {
+  const d = new Date(createdAt)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function isConflict(err: unknown): boolean {
+  return (err as { response?: { status?: number } })?.response?.status === 409
+}
+
+// ── Computed ──────────────────────────────────────────────────────────────────
+
+const mealCards = computed<MealCard[]>(() => {
+  if (!recommendation.value) return []
+  return recommendation.value.plan.meals.flatMap(meal =>
+    meal.options.map(opt => ({
+      mealType: meal.mealType,
+      optionNumber: opt.optionNumber,
+      calories: opt.totalCalories,
+      protein: opt.totalProtein,
+      carbs: opt.totalCarbs,
+      items: opt.items,
+    }))
+  )
+})
+
+const mealTypesWithMultipleOptions = computed<Set<string>>(() => {
+  if (!recommendation.value) return new Set()
+  return new Set(
+    recommendation.value.plan.meals
+      .filter(m => m.options.length > 1)
+      .map(m => m.mealType)
+  )
+})
+
+// Assumes logs is always scoped to today (enforced server-side by getByDate).
+const loggedMealTypes = computed<Set<string>>(
+  () => new Set(logs.value.map(l => l.mealType))
+)
+
+const totalKcal = computed(() =>
+  Math.round(logs.value.reduce((sum, l) => sum + l.calories, 0))
+)
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+
+async function fetchData(): Promise<void> {
+  loading.value = true
+  error.value = null
+  logsError.value = null
+  try {
+    const today = getLocalDate()
+    const [recResult, logsResult] = await Promise.allSettled([
+      aiService.getLatest(),
+      mealLogService.getByDate(today),
+    ])
+
+    if (recResult.status === 'fulfilled') {
+      recommendation.value = recResult.value
+    } else {
+      const status = (recResult.reason as { response?: { status?: number } })?.response?.status
+      if (status !== 404) {
+        error.value = 'Erro ao carregar a dieta ativa. Tente novamente.'
+      }
+    }
+
+    if (logsResult.status === 'fulfilled') {
+      logs.value = logsResult.value
+    } else {
+      logsError.value = 'Não foi possível carregar as refeições efetivadas de hoje.'
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+
+async function efetivarSugestao(card: MealCard): Promise<void> {
+  if (!recommendation.value) return
+  if (loggedMealTypes.value.has(card.mealType)) {
+    toast.warning(`${mealLabel(card.mealType)} já registrado hoje.`)
+    return
+  }
+  if (loggingInProgress.has(card.mealType)) return
+  loggingInProgress.add(card.mealType)
+  try {
+    const newLog = await mealLogService.log({
+      recommendationId: recommendation.value.id,
+      mealDate: getLocalDate(),
+      mealType: card.mealType,
+      optionNumber: card.optionNumber,
+    })
+    logs.value.push(newLog)
+    toast.success(`${mealLabel(card.mealType)} registrado!`)
+  } catch (err) {
+    if (isConflict(err)) {
+      toast.warning(`${mealLabel(card.mealType)} já registrado hoje.`)
+      try {
+        logsError.value = null
+        logs.value = await mealLogService.getByDate(getLocalDate())
+      } catch {
+        toast.warning('Não foi possível atualizar a lista de refeições.')
+      }
+    } else {
+      toast.error('Erro ao registrar refeição. Tente novamente.')
+    }
+  } finally {
+    loggingInProgress.delete(card.mealType)
+  }
+}
+
+async function removerRefeicao(id: number): Promise<void> {
+  try {
+    await mealLogService.remove(id)
+    logs.value = logs.value.filter(l => l.id !== id)
+  } catch {
+    toast.error('Erro ao remover refeição. Tente novamente.')
+  }
+}
+
+onMounted(fetchData)
+
+const voltar = () => router.back()
+const logout = () => authStore.logout()
 </script>
 
 <template>
   <div class="registro-wrapper">
-    <!-- NAVBAR PADRONIZADA (Igual ao Dashboard/Perfil) -->
+    <!-- NAVBAR PADRONIZADA -->
     <nav class="top-nav-standard">
       <button class="btn-nav-back" @click="voltar">
         <span class="chevron-left"></span>
@@ -57,8 +185,6 @@ const logout = () => authStore.logout();
     </nav>
 
     <main class="content-container">
-      <MockDataBanner />
-
       <!-- Cabeçalho da Página -->
       <header class="page-intro">
         <span class="intro-tag">Log de Consumo</span>
@@ -66,42 +192,85 @@ const logout = () => authStore.logout();
         <p>Confirme o que você consumiu hoje para atualizar seu saldo calórico.</p>
       </header>
 
-      <!-- Card de Saldo (Baseado na pág 14 do PDF) -->
+      <!-- Card de Saldo -->
       <section class="balance-highlight-card">
         <div class="balance-content">
           <label>Saldo Calórico do Dia</label>
-          <h2 class="total-display">{{ totalKcal }} <span>kcal</span></h2>
-          <p class="balance-status">Consumo registrado até o momento.</p>
+          <h2 class="total-display">{{ (loading || logsError) ? '--' : totalKcal }} <span>kcal</span></h2>
+          <p class="balance-status">{{ logsError ? 'Erro ao carregar consumo do dia.' : 'Consumo registrado até o momento.' }}</p>
         </div>
         <div class="decoration-circle"></div>
       </section>
 
-      <!-- Layout em Grid Espalhado -->
-      <div class="registro-grid">
-        
-        <!-- Coluna: Sugestões do Plano (RF013) -->
+      <!-- Estado: carregando -->
+      <div v-if="loading" class="state-feedback">
+        <p>Carregando seu plano do dia...</p>
+      </div>
+
+      <!-- Estado: erro crítico (recomendação não pôde ser carregada) -->
+      <div v-else-if="error" class="state-feedback state-feedback--error">
+        <p>{{ error }}</p>
+        <button class="retry-btn" @click="fetchData">Tentar novamente</button>
+      </div>
+
+      <!-- Estado: carregado -->
+      <div v-else class="registro-grid">
+
+        <!-- Coluna: Sugestões do Plano -->
         <section class="column-section">
           <div class="column-header">
             <h3>Sugestões do Plano</h3>
             <p>Rápida efetivação</p>
           </div>
 
-          <div class="sugestoes-stack">
-            <article v-for="item in sugestoesIA" :key="item.id" class="sugestao-card">
+          <!-- Sem dieta ativa -->
+          <div v-if="!recommendation" class="state-feedback state-feedback--empty">
+            <p>Nenhuma dieta ativa encontrada.</p>
+            <p class="state-feedback__hint">Gere uma dieta personalizada para começar a registrar refeições.</p>
+          </div>
+
+          <!-- Cards de opções -->
+          <div v-else class="sugestoes-stack">
+            <article
+              v-for="card in mealCards"
+              :key="`${card.mealType}-${card.optionNumber}`"
+              class="sugestao-card"
+            >
               <div class="sugestao-info">
-                <strong>{{ item.nome }}</strong>
+                <strong>
+                  {{ mealLabel(card.mealType) }}
+                  <span v-if="mealTypesWithMultipleOptions.has(card.mealType)" class="option-tag">
+                    Op. {{ card.optionNumber }}
+                  </span>
+                </strong>
                 <div class="macros-badges">
-                  <span>{{ item.kcal }} kcal</span>
-                  <span>{{ item.prot }}P</span>
-                  <span>{{ item.carb }}C</span>
+                  <span>{{ Math.round(card.calories) }} kcal</span>
+                  <span>{{ Math.round(card.protein) }}g P</span>
+                  <span>{{ Math.round(card.carbs) }}g C</span>
                 </div>
+                <ul v-if="card.items.length" class="items-list">
+                  <li v-for="item in card.items" :key="item.foodId" class="item-entry">
+                    {{ item.displayName || item.name }}
+                    <span class="item-portion">{{ item.portionGrams }}g</span>
+                  </li>
+                </ul>
               </div>
-              <button @click="efetivarSugestao(item)" class="btn-add-plus">Adicionar</button>
+              <button
+                v-if="loggedMealTypes.has(card.mealType)"
+                class="btn-logged"
+                disabled
+              >✓ Registrado</button>
+              <button
+                v-else
+                @click="efetivarSugestao(card)"
+                :disabled="loggingInProgress.has(card.mealType)"
+                class="btn-add-plus"
+              >Adicionar</button>
             </article>
           </div>
         </section>
 
-        <!-- Coluna: Histórico Diário (RF015 com Remoção) -->
+        <!-- Coluna: Consumido Hoje -->
         <section class="column-section">
           <div class="column-header">
             <h3>Consumido Hoje</h3>
@@ -109,22 +278,28 @@ const logout = () => authStore.logout();
           </div>
 
           <div class="history-timeline">
-            <article v-for="log in refeicoesConsumidas" :key="log.id" class="log-entry">
-              <div class="log-time-box">{{ log.horario }}</div>
-              <div class="log-main-card">
-                <div class="log-text">
-                  <strong>{{ log.nome }}</strong>
-                  <p>{{ log.descricao }} - {{ log.kcal }} kcal</p>
-                </div>
-                <button @click="removerRefeicao(log.id)" class="btn-remove-log">
-                  Remover
-                </button>
-              </div>
-            </article>
-
-            <div v-if="refeicoesConsumidas.length === 0" class="empty-log-msg">
-              Nenhum registro encontrado para hoje.
+            <div v-if="logsError" class="state-feedback state-feedback--error">
+              <p>{{ logsError }}</p>
+              <button class="retry-btn" @click="fetchData">Tentar novamente</button>
             </div>
+            <template v-else>
+              <article v-for="log in logs" :key="log.id" class="log-entry">
+                <div class="log-time-box">{{ formatTime(log.createdAt) }}</div>
+                <div class="log-main-card">
+                  <div class="log-text">
+                    <strong>{{ mealLabel(log.mealType) }}</strong>
+                    <p>Opção {{ log.optionNumber }} — {{ Math.round(log.calories) }} kcal</p>
+                  </div>
+                  <button @click="removerRefeicao(log.id)" class="btn-remove-log">
+                    Remover
+                  </button>
+                </div>
+              </article>
+
+              <div v-if="logs.length === 0" class="empty-log-msg">
+                Nenhum registro encontrado para hoje.
+              </div>
+            </template>
           </div>
         </section>
 
@@ -139,7 +314,7 @@ const logout = () => authStore.logout();
   --bg-card: #1e293b;
   --accent: #10b981;
   --text-muted: #94a3b8;
-  
+
   min-height: 100vh;
   background-color: var(--bg-deep);
   color: white;
@@ -154,7 +329,7 @@ const logout = () => authStore.logout();
   position: sticky; top: 0; z-index: 100;
 }
 
-.btn-nav-back { 
+.btn-nav-back {
   background: transparent; border: none; color: var(--text-muted);
   display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;
 }
@@ -174,7 +349,7 @@ const logout = () => authStore.logout();
 .page-intro h1 { font-size: 2.5rem; font-weight: 900; margin: 0.5rem 0; letter-spacing: -1px; }
 .page-intro p { color: var(--text-muted); font-size: 1.1rem; }
 
-/* CARD DE DESTAQUE (Página 14 do PDF) */
+/* CARD DE DESTAQUE */
 .balance-highlight-card {
   background: var(--accent); color: var(--bg-deep);
   padding: 3rem; border-radius: 30px; margin-bottom: 4rem;
@@ -190,6 +365,31 @@ const logout = () => authStore.logout();
 
 .decoration-circle { position: absolute; right: -50px; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; }
 
+/* ESTADOS DE FEEDBACK */
+.state-feedback {
+  background: var(--bg-card);
+  border-radius: 24px;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+}
+.state-feedback--error { border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; }
+.state-feedback--empty { border: 1px solid rgba(255,255,255,0.05); }
+.state-feedback__hint { font-size: 0.9rem; margin-top: 0.5rem; }
+.retry-btn {
+  margin-top: 1rem;
+  background: transparent;
+  border: 1px solid #f87171;
+  color: #f87171;
+  padding: 0.5rem 1.25rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.retry-btn:hover { background: rgba(239, 68, 68, 0.1); }
+
 /* GRID DE REGISTRO */
 .registro-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 4rem; }
 
@@ -201,11 +401,34 @@ const logout = () => authStore.logout();
 .sugestoes-stack { display: flex; flex-direction: column; gap: 1rem; }
 .sugestao-card {
   background: var(--bg-card); padding: 1.5rem; border-radius: 20px;
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; justify-content: space-between; align-items: flex-start;
   border: 1px solid rgba(255,255,255,0.03);
 }
 
+.items-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.item-entry {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.item-portion {
+  font-weight: 600;
+  color: rgba(148, 163, 184, 0.7);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
 .sugestao-info strong { display: block; font-size: 1.1rem; margin-bottom: 0.5rem; }
+.option-tag { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
 .macros-badges { display: flex; gap: 8px; }
 .macros-badges span { background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; color: var(--text-muted); }
 
@@ -214,6 +437,12 @@ const logout = () => authStore.logout();
   padding: 0.6rem 1rem; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.3s;
 }
 .btn-add-plus:hover { background: var(--accent); color: var(--bg-deep); }
+
+.btn-logged {
+  background: rgba(16, 185, 129, 0.05); color: var(--accent); border: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 0.6rem 1rem; border-radius: 10px; font-weight: 700; font-size: 0.85rem;
+  cursor: default; opacity: 0.7;
+}
 
 /* HISTÓRICO / TIMELINE */
 .history-timeline { display: flex; flex-direction: column; gap: 1.5rem; }

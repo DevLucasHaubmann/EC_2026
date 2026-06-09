@@ -1,11 +1,10 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { fileURLToPath, URL } from 'node:url' // <-- Importação necessária para o caminho
+import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
   plugins: [vue()],
 
-  // <-- ADICIONE ESTE BLOCO RESOLVE AQUI -->
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

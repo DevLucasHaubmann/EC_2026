@@ -1,22 +1,33 @@
-import { api } from '../http/api'
+import { api } from '@/services/http/api'
+import type { ProfileData, AdminProfileRequest, Page } from '@/types/admin'
 
 export const adminProfileService = {
-  findByUserId: async (userId: number) => {
-    const res = await api.get(`/profiles/users/${userId}`)
+  findAll: async (page = 0, size = 10): Promise<Page<ProfileData>> => {
+    const res = await api.get<Page<ProfileData>>(`/profiles?page=${page}&size=${size}`)
     return res.data
   },
 
-  update: async (id: number, data: object) => {
-    const res = await api.put(`/profiles/${id}`, data)
+  findById: async (id: number): Promise<ProfileData> => {
+    const res = await api.get<ProfileData>(`/profiles/${id}`)
     return res.data
   },
 
-  delete: async (id: number) => {
+  findByUserId: async (userId: number): Promise<ProfileData> => {
+    const res = await api.get<ProfileData>(`/profiles/users/${userId}`)
+    return res.data
+  },
+
+  update: async (id: number, data: AdminProfileRequest): Promise<ProfileData> => {
+    const res = await api.put<ProfileData>(`/profiles/${id}`, data)
+    return res.data
+  },
+
+  delete: async (id: number): Promise<void> => {
     await api.delete(`/profiles/${id}`)
   },
 
-  create: async (userId: number, data: object) => {
-    const res = await api.post(`/profiles/users/${userId}`, data)
+  create: async (userId: number, data: AdminProfileRequest): Promise<ProfileData> => {
+    const res = await api.post<ProfileData>(`/profiles/users/${userId}`, data)
     return res.data
   },
 }

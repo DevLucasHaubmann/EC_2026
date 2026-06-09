@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.List;
 
 @Entity
 @Table(name = "recommendation", indexes = {
@@ -21,6 +22,9 @@ public class Recommendation {
         VIEWED,
         ARCHIVED
     }
+
+    public static final List<RecommendationStatus> ACTIVE_STATUSES =
+            List.of(RecommendationStatus.GENERATED, RecommendationStatus.VIEWED);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
