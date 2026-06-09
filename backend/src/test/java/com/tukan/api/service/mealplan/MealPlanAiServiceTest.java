@@ -3,6 +3,7 @@ package com.tukan.api.service.mealplan;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tukan.api.dto.mealplan.*;
 import com.tukan.api.exception.AiProviderException;
+import com.tukan.api.service.mealplan.MealPlanGenerationResult;
 import com.tukan.api.service.ai.AiProviderClient;
 import com.tukan.api.service.ai.AiProviderResult;
 import com.tukan.api.service.ai.MealPlanPromptBuilder;
@@ -20,6 +21,8 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -66,6 +69,21 @@ class MealPlanAiServiceTest {
     class FluxoComIa {
 
         @Test
+        void deveExecutarGeneratePlanEBuildContextExatamenteUmaVezPorGeracao() {
+            when(mealPlanEngine.generatePlan("user@test.com")).thenReturn(samplePlan());
+            when(mealPlanEngine.buildContext("user@test.com")).thenReturn(sampleContext());
+            when(promptBuilder.buildSystemPrompt()).thenReturn("system");
+            when(promptBuilder.buildUserPrompt(samplePlan(), sampleContext())).thenReturn("user");
+            when(aiProviderClient.send("system", "user"))
+                    .thenReturn(new AiProviderResult(VALID_AI_RESPONSE, "gemini", "gemini-2.0-flash"));
+
+            mealPlanAiService.generate("user@test.com");
+
+            verify(mealPlanEngine, times(1)).generatePlan("user@test.com");
+            verify(mealPlanEngine, times(1)).buildContext("user@test.com");
+        }
+
+        @Test
         void deveRetornarRespostaCompletaQuandoIaRespondeComSucesso() {
             when(mealPlanEngine.generatePlan("user@test.com")).thenReturn(samplePlan());
             when(mealPlanEngine.buildContext("user@test.com")).thenReturn(sampleContext());
@@ -74,7 +92,8 @@ class MealPlanAiServiceTest {
             when(aiProviderClient.send("system", "user"))
                     .thenReturn(new AiProviderResult(VALID_AI_RESPONSE, "gemini", "gemini-2.0-flash"));
 
-            MealPlanRecommendationResponse response = mealPlanAiService.generate("user@test.com");
+            MealPlanGenerationResult result = mealPlanAiService.generate("user@test.com");
+            MealPlanRecommendationResponse response = result.response();
 
             assertThat(response.status()).isEqualTo("COMPLETO");
             assertThat(response.plan()).isEqualTo(samplePlan());
@@ -99,7 +118,8 @@ class MealPlanAiServiceTest {
             when(aiProviderClient.send(anyString(), anyString()))
                     .thenThrow(new AiProviderException("Timeout na API"));
 
-            MealPlanRecommendationResponse response = mealPlanAiService.generate("user@test.com");
+            MealPlanGenerationResult result = mealPlanAiService.generate("user@test.com");
+            MealPlanRecommendationResponse response = result.response();
 
             assertThat(response.plan()).isEqualTo(samplePlan());
             assertThat(response.provider()).isEqualTo("fallback");
@@ -117,7 +137,8 @@ class MealPlanAiServiceTest {
             when(aiProviderClient.send(anyString(), anyString()))
                     .thenReturn(new AiProviderResult("resposta inválida", "gemini", "gemini-2.0-flash"));
 
-            MealPlanRecommendationResponse response = mealPlanAiService.generate("user@test.com");
+            MealPlanGenerationResult result = mealPlanAiService.generate("user@test.com");
+            MealPlanRecommendationResponse response = result.response();
 
             assertThat(response.plan()).isEqualTo(samplePlan());
             assertThat(response.provider()).isEqualTo("fallback");
@@ -133,7 +154,8 @@ class MealPlanAiServiceTest {
             when(aiProviderClient.send(anyString(), anyString()))
                     .thenReturn(new AiProviderResult(null, "gemini", "gemini-2.0-flash"));
 
-            MealPlanRecommendationResponse response = mealPlanAiService.generate("user@test.com");
+            MealPlanGenerationResult result = mealPlanAiService.generate("user@test.com");
+            MealPlanRecommendationResponse response = result.response();
 
             assertThat(response.provider()).isEqualTo("fallback");
             assertThat(response.status()).isEqualTo("PARCIAL");
@@ -148,7 +170,8 @@ class MealPlanAiServiceTest {
             when(aiProviderClient.send(anyString(), anyString()))
                     .thenReturn(new AiProviderResult("   ", "gemini", "gemini-2.0-flash"));
 
-            MealPlanRecommendationResponse response = mealPlanAiService.generate("user@test.com");
+            MealPlanGenerationResult result = mealPlanAiService.generate("user@test.com");
+            MealPlanRecommendationResponse response = result.response();
 
             assertThat(response.provider()).isEqualTo("fallback");
             assertThat(response.status()).isEqualTo("PARCIAL");
@@ -175,7 +198,8 @@ class MealPlanAiServiceTest {
             when(aiProviderClient.send(anyString(), anyString()))
                     .thenReturn(new AiProviderResult(semResumo, "gemini", "gemini-2.0-flash"));
 
-            MealPlanRecommendationResponse response = mealPlanAiService.generate("user@test.com");
+            MealPlanGenerationResult result = mealPlanAiService.generate("user@test.com");
+            MealPlanRecommendationResponse response = result.response();
 
             assertThat(response.provider()).isEqualTo("fallback");
             assertThat(response.status()).isEqualTo("PARCIAL");
@@ -198,7 +222,8 @@ class MealPlanAiServiceTest {
             when(aiProviderClient.send(anyString(), anyString()))
                     .thenReturn(new AiProviderResult(semExplicacoes, "gemini", "gemini-2.0-flash"));
 
-            MealPlanRecommendationResponse response = mealPlanAiService.generate("user@test.com");
+            MealPlanGenerationResult result = mealPlanAiService.generate("user@test.com");
+            MealPlanRecommendationResponse response = result.response();
 
             assertThat(response.provider()).isEqualTo("fallback");
             assertThat(response.status()).isEqualTo("PARCIAL");
@@ -221,7 +246,8 @@ class MealPlanAiServiceTest {
             when(aiProviderClient.send(anyString(), anyString()))
                     .thenReturn(new AiProviderResult(withEmptyValue, "gemini", "gemini-2.0-flash"));
 
-            MealPlanRecommendationResponse response = mealPlanAiService.generate("user@test.com");
+            MealPlanGenerationResult result = mealPlanAiService.generate("user@test.com");
+            MealPlanRecommendationResponse response = result.response();
 
             assertThat(response.provider()).isEqualTo("fallback");
             assertThat(response.status()).isEqualTo("PARCIAL");
@@ -244,7 +270,8 @@ class MealPlanAiServiceTest {
             when(aiProviderClient.send(anyString(), anyString()))
                     .thenReturn(new AiProviderResult(withBlankValue, "gemini", "gemini-2.0-flash"));
 
-            MealPlanRecommendationResponse response = mealPlanAiService.generate("user@test.com");
+            MealPlanGenerationResult result = mealPlanAiService.generate("user@test.com");
+            MealPlanRecommendationResponse response = result.response();
 
             assertThat(response.provider()).isEqualTo("fallback");
             assertThat(response.status()).isEqualTo("PARCIAL");
@@ -270,7 +297,8 @@ class MealPlanAiServiceTest {
             when(aiProviderClient.send(anyString(), anyString()))
                     .thenReturn(new AiProviderResult(withMixedValues, "gemini", "gemini-2.0-flash"));
 
-            MealPlanRecommendationResponse response = mealPlanAiService.generate("user@test.com");
+            MealPlanGenerationResult result = mealPlanAiService.generate("user@test.com");
+            MealPlanRecommendationResponse response = result.response();
 
             assertThat(response.provider()).isEqualTo("fallback");
             assertThat(response.status()).isEqualTo("PARCIAL");
@@ -296,7 +324,8 @@ class MealPlanAiServiceTest {
             when(aiProviderClient.send(anyString(), anyString()))
                     .thenReturn(new AiProviderResult(withAllValidValues, "gemini", "gemini-2.0-flash"));
 
-            MealPlanRecommendationResponse response = mealPlanAiService.generate("user@test.com");
+            MealPlanGenerationResult result = mealPlanAiService.generate("user@test.com");
+            MealPlanRecommendationResponse response = result.response();
 
             assertThat(response.status()).isEqualTo("COMPLETO");
             assertThat(response.provider()).isEqualTo("gemini");

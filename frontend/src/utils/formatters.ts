@@ -25,29 +25,30 @@ export function formatBMI(bmi: number): string {
 
 export function formatActivityLevel(level: string): string {
   const map: Record<string, string> = {
-    SEDENTARIO: 'Sedentário',
-    LEVE: 'Leve',
-    MODERADO: 'Moderado',
-    INTENSO: 'Intenso',
-    MUITO_INTENSO: 'Muito Intenso',
+    SEDENTARY: 'Sedentário',
+    LIGHT: 'Leve',
+    MODERATE: 'Moderado',
+    INTENSE: 'Intenso',
+    VERY_INTENSE: 'Muito intenso',
   }
-  return map[level] || level
+  return map[level] ?? level
 }
 
 export function formatNutritionalGoal(goal: string): string {
   const map: Record<string, string> = {
-    PERDER_PESO: 'Perder Peso',
-    MANTER_PESO: 'Manter Peso',
-    GANHAR_PESO: 'Ganhar Peso',
+    WEIGHT_LOSS: 'Perda de peso',
+    MUSCLE_GAIN: 'Ganho de massa',
+    MAINTENANCE: 'Manutenção',
+    DIETARY_REEDUCATION: 'Reeducação alimentar',
+    SPORTS_PERFORMANCE: 'Performance esportiva',
   }
-  return map[goal] || goal
+  return map[goal] ?? goal
 }
 
 export function formatGender(gender: string): string {
   const map: Record<string, string> = {
-    MASCULINO: 'Masculino',
-    FEMININO: 'Feminino',
-    OUTRO: 'Outro',
+    MALE: 'Masculino',
+    FEMALE: 'Feminino',
   }
-  return map[gender] || gender
+  return map[gender] ?? gender
 }

@@ -39,8 +39,10 @@ const GOAL_LABELS: Record<Dashboard.NutritionalGoal, string> = {
 
 const ACTIVITY_LABELS: Record<Dashboard.ActivityLevel, string> = {
   SEDENTARY: 'Sedentário',
+  LIGHT: 'Leve',
   MODERATE: 'Moderado',
   INTENSE: 'Intenso',
+  VERY_INTENSE: 'Muito intenso',
 }
 
 // Converte IMC em porcentagem visual para a barra de progresso (faixa saudável = 100%)

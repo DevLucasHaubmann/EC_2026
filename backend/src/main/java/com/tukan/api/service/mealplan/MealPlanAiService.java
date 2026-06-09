@@ -25,7 +25,7 @@ public class MealPlanAiService {
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
-    public MealPlanRecommendationResponse generate(String authenticatedEmail) {
+    public MealPlanGenerationResult generate(String authenticatedEmail) {
         DailyMealPlan plan = mealPlanEngine.generatePlan(authenticatedEmail);
         MealPlanContext context = mealPlanEngine.buildContext(authenticatedEmail);
 
@@ -37,7 +37,7 @@ public class MealPlanAiService {
 
             MealPlanAiResponse aiResponse = parseResponse(providerResult.content());
 
-            return new MealPlanRecommendationResponse(
+            MealPlanRecommendationResponse response = new MealPlanRecommendationResponse(
                     "COMPLETO",
                     aiResponse.summary(),
                     plan,
@@ -47,14 +47,15 @@ public class MealPlanAiService {
                     providerResult.provider(),
                     providerResult.model()
             );
+            return new MealPlanGenerationResult(response, context);
         } catch (Exception e) {
             log.error("Falha ao enriquecer plano alimentar com IA. Retornando plano sem complemento da IA.", e);
-            return buildFallbackResponse(plan);
+            return buildFallbackResult(plan, context);
         }
     }
 
-    private MealPlanRecommendationResponse buildFallbackResponse(DailyMealPlan plan) {
-        return new MealPlanRecommendationResponse(
+    private MealPlanGenerationResult buildFallbackResult(DailyMealPlan plan, MealPlanContext context) {
+        MealPlanRecommendationResponse response = new MealPlanRecommendationResponse(
                 "PARCIAL",
                 "Plano alimentar gerado com sucesso. O complemento da IA está temporariamente indisponível.",
                 plan,
@@ -64,6 +65,7 @@ public class MealPlanAiService {
                 "fallback",
                 "none"
         );
+        return new MealPlanGenerationResult(response, context);
     }
 
     private MealPlanAiResponse parseResponse(String rawResponse) {

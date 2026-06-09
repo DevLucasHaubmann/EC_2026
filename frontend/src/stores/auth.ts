@@ -25,13 +25,13 @@ export const useAuthStore = defineStore('auth', () => {
   async function restoreSession(): Promise<void> {
     const storedAccess = localStorage.getItem(ACCESS_TOKEN_KEY)
     const storedRefresh = localStorage.getItem(REFRESH_TOKEN_KEY)
-    const storedType = localStorage.getItem(USER_TYPE_KEY) as UserType | null
+    const storedType = localStorage.getItem(USER_TYPE_KEY)
 
     if (!storedAccess || !storedRefresh) return
 
     accessToken.value = storedAccess
     refreshToken.value = storedRefresh
-    userType.value = (storedType && storedType !== 'undefined' && storedType !== 'null') ? storedType : null
+    userType.value = (storedType === 'ADMIN' || storedType === 'USER') ? storedType : null
   }
 
   function persistTokens(access: string, refresh: string, type: UserType) {

@@ -88,6 +88,7 @@ public class FoodFilterService {
     public Map<String, List<Food>> groupByMealType(List<Food> foods) {
         Map<String, List<Food>> grouped = new LinkedHashMap<>();
         grouped.put("BREAKFAST", new ArrayList<>());
+        grouped.put("MORNING_SNACK", new ArrayList<>());
         grouped.put("LUNCH", new ArrayList<>());
         grouped.put("AFTERNOON_SNACK", new ArrayList<>());
         grouped.put("DINNER", new ArrayList<>());

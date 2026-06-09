@@ -21,6 +21,9 @@ public class Food {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "display_name", nullable = false)
+    private String displayName;
+
     @Column(name = "normalized_name")
     private String normalizedName;
 

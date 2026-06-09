@@ -241,12 +241,13 @@ class FoodFilterServiceTest {
         }
 
         @Test
-        @DisplayName("Sempre retorna 4 refeições mesmo sem alimentos")
-        void sempreRetornaQuatroRefeicoes() {
+        @DisplayName("Sempre retorna os 5 tipos de refeição mesmo sem alimentos")
+        void sempreRetornaCincoTiposDeRefeicao() {
             Map<String, List<Food>> grouped = foodFilterService.groupByMealType(List.of());
 
-            assertThat(grouped).hasSize(4);
-            assertThat(grouped).containsKeys("BREAKFAST", "LUNCH", "AFTERNOON_SNACK", "DINNER");
+            assertThat(grouped).hasSize(5);
+            assertThat(grouped).containsKeys(
+                    "BREAKFAST", "MORNING_SNACK", "LUNCH", "AFTERNOON_SNACK", "DINNER");
         }
     }
 }

@@ -12,7 +12,7 @@ import com.tukan.api.exception.BusinessException;
 import com.tukan.api.repository.RecommendationFeedbackRepository;
 import com.tukan.api.repository.RecommendationRepository;
 import com.tukan.api.service.mealplan.MealPlanAiService;
-import com.tukan.api.service.mealplan.MealPlanEngine;
+import com.tukan.api.service.mealplan.MealPlanGenerationResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,7 +26,6 @@ public class AiRecommendationService {
 
     private final UserService userService;
     private final MealPlanAiService mealPlanAiService;
-    private final MealPlanEngine mealPlanEngine;
     private final RecommendationRepository recommendationRepository;
     private final RecommendationFeedbackRepository recommendationFeedbackRepository;
     private final ObjectMapper objectMapper;
@@ -42,10 +41,10 @@ public class AiRecommendationService {
 
         archiveActiveRecommendations(user.getId());
 
-        MealPlanRecommendationResponse response = mealPlanAiService.generate(authenticatedEmail);
-        String contextJson = toJson(mealPlanEngine.buildContext(authenticatedEmail));
+        MealPlanGenerationResult result = mealPlanAiService.generate(authenticatedEmail);
+        String contextJson = toJson(result.context());
 
-        Recommendation recommendation = toEntity(user, response, contextJson);
+        Recommendation recommendation = toEntity(user, result.response(), contextJson);
         return recommendationRepository.save(recommendation);
     }
 

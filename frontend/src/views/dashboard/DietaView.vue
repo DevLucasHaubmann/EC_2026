@@ -8,6 +8,9 @@ const erro = ref<string | null>(null);
 const recomendacao = ref<Recommendation.Response | null>(null);
 const summaryExpanded = ref(false);
 
+// Índice da opção selecionada por refeição. Chave: `${mealType}-${indexNoPlan}`
+const selectedOptionIndex = ref<Record<string, number>>({});
+
 const MEAL_LABELS: Record<string, string> = {
   BREAKFAST:        'Café da manhã',
   MORNING_SNACK:    'Lanche da manhã',
@@ -17,18 +20,37 @@ const MEAL_LABELS: Record<string, string> = {
   SUPPER:           'Ceia',
 };
 
+function mealKey(meal: Recommendation.MealPlanMeal, index: number): string {
+  return `${meal.mealType}-${index}`;
+}
+
 function mealLabel(type: string): string {
   return MEAL_LABELS[type] ?? type;
 }
 
-function mealAlimentos(meal: Recommendation.MealPlanMeal): string {
-  const opt = meal.options[0];
+function selectedOption(meal: Recommendation.MealPlanMeal, index: number): Recommendation.MealOption | undefined {
+  const key = mealKey(meal, index);
+  const idx = selectedOptionIndex.value[key] ?? 0;
+  return meal.options[idx] ?? meal.options[0];
+}
+
+function selectOption(meal: Recommendation.MealPlanMeal, mealIndex: number, optionIdx: number): void {
+  const key = mealKey(meal, mealIndex);
+  selectedOptionIndex.value = { ...selectedOptionIndex.value, [key]: optionIdx };
+}
+
+function activeOptionIndex(meal: Recommendation.MealPlanMeal, mealIndex: number): number {
+  return selectedOptionIndex.value[mealKey(meal, mealIndex)] ?? 0;
+}
+
+function mealAlimentos(meal: Recommendation.MealPlanMeal, mealIndex: number): string {
+  const opt = selectedOption(meal, mealIndex);
   if (!opt || opt.items.length === 0) return '—';
   return opt.items.map(i => i.displayName || i.name).join(', ');
 }
 
-function mealMacros(meal: Recommendation.MealPlanMeal) {
-  const opt = meal.options[0];
+function mealMacros(meal: Recommendation.MealPlanMeal, mealIndex: number) {
+  const opt = selectedOption(meal, mealIndex);
   if (!opt) return { prot: '—', carb: '—', gord: '—' };
   return {
     prot: `${Math.round(opt.totalProtein)}g`,
@@ -125,8 +147,8 @@ onMounted(async () => {
         <!-- Coluna Esquerda: Refeições -->
         <section class="meals-column">
           <article
-            v-for="meal in recomendacao.plan.meals"
-            :key="meal.mealType"
+            v-for="(meal, mealIndex) in recomendacao.plan.meals"
+            :key="mealKey(meal, mealIndex)"
             class="meal-card-item"
           >
             <div class="meal-card-header">
@@ -134,15 +156,28 @@ onMounted(async () => {
                 <span class="meal-type">{{ mealLabel(meal.mealType) }}</span>
                 <span class="meal-kcal">{{ meal.calorieTarget }} kcal</span>
               </div>
+
+              <!-- Alternância de opções: só exibe se houver mais de uma opção real -->
+              <div v-if="meal.options.length > 1" class="option-switcher">
+                <button
+                  v-for="(opt, optIdx) in meal.options"
+                  :key="optIdx"
+                  class="option-btn"
+                  :class="{ active: activeOptionIndex(meal, mealIndex) === optIdx }"
+                  @click="selectOption(meal, mealIndex, optIdx)"
+                >
+                  Opção {{ optIdx + 1 }}
+                </button>
+              </div>
             </div>
 
-            <p class="meal-description">{{ mealAlimentos(meal) }}</p>
+            <p class="meal-description">{{ mealAlimentos(meal, mealIndex) }}</p>
 
             <div class="meal-footer">
               <div class="macros-display">
-                <span>{{ mealMacros(meal).prot }} prot</span>
-                <span>{{ mealMacros(meal).carb }} carb</span>
-                <span>{{ mealMacros(meal).gord }} gord</span>
+                <span>{{ mealMacros(meal, mealIndex).prot }} prot</span>
+                <span>{{ mealMacros(meal, mealIndex).carb }} carb</span>
+                <span>{{ mealMacros(meal, mealIndex).gord }} gord</span>
               </div>
             </div>
           </article>
@@ -289,7 +324,24 @@ onMounted(async () => {
   border-radius: 20px;
   border: 1px solid rgba(255,255,255,0.03);
 }
-.meal-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+.meal-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.75rem; }
+
+/* Alternância de opções */
+.option-switcher { display: flex; gap: 0.4rem; flex-shrink: 0; }
+.option-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  letter-spacing: 0.3px;
+}
+.option-btn:hover { background: rgba(16,185,129,0.1); color: var(--accent); border-color: rgba(16,185,129,0.3); }
+.option-btn.active { background: rgba(16,185,129,0.15); color: var(--accent); border-color: rgba(16,185,129,0.5); }
 .meal-type { font-size: 1.1rem; font-weight: 800; display: block; }
 .meal-kcal { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; background: rgba(255,255,255,0.05); padding: 3px 9px; border-radius: 8px; margin-top: 3px; display: inline-block; }
 .meal-description { font-size: 0.95rem; line-height: 1.5; color: #cbd5e1; margin-bottom: 1.25rem; }

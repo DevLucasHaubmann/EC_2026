@@ -243,9 +243,11 @@ const finalizarTriagem = async () => {
           <div class="field">
             <label>Nível de Atividade Física</label>
             <select v-model="form.nivelAtividade">
-              <option value="SEDENTARY">Sedentário (Pouco movimento)</option>
-              <option value="MODERATE">Moderado (3-5x na semana)</option>
-              <option value="INTENSE">Ativo (Treino Diário)</option>
+              <option value="SEDENTARY">Sedentário (pouco ou nenhum exercício)</option>
+              <option value="LIGHT">Leve (1–3x por semana)</option>
+              <option value="MODERATE">Moderado (3–5x por semana)</option>
+              <option value="INTENSE">Intenso (treino diário)</option>
+              <option value="VERY_INTENSE">Muito intenso (2x por dia ou trabalho físico)</option>
             </select>
           </div>
         </div>
