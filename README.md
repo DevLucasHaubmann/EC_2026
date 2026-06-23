@@ -6,19 +6,33 @@
 ![PostgreSQL](https://img.shields.io/badge/database-PostgreSQL-336791?logo=postgresql&logoColor=white)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
+# Tukan Nutrition
+Experiência Criativa: Projetando Sistemas de Informação - Cleverson Avelino e Vinícius G. Mendonça
+
 Tukan is a full-stack web application for AI-assisted nutrition and training workflows. It pairs a Vue 3 + TypeScript frontend with a Spring Boot backend and PostgreSQL persistence, with AI-provider access kept on the server side rather than in the browser.
+
+---
+
+## Integrantes
+
+- Adrian Antonio de Souza Gomes
+- Edmund Soares de Sousa
+- Lucas Azzolin Haubmann
+- Vinicius Lima Teider
+
+---
 
 ## Executive Summary
 
-This README is structured for public GitHub audiences first: it explains what the project does, why it is useful, how to run it locally, how to deploy it, and how to contribute. That matches GitHub’s own guidance for repository READMEs and public repository hygiene, where the README, license, and contributor guidance are part of the first impression and onboarding path for developers, evaluators, and contributors. citeturn12search0turn12search4turn9search3turn0search12
+This README is structured for public GitHub audiences first: it explains what the project does, why it is useful, how to run it locally, how to deploy it, and how to contribute. That matches GitHub’s own guidance for repository READMEs and public repository hygiene, where the README, license, and contributor guidance are part of the first impression and onboarding path for developers, evaluators, and contributors. 
 
-For reproducibility, the setup below assumes a public mono-repo with `frontend/` and `backend/` directories, npm on the frontend, PostgreSQL as the primary database, and either Maven Wrapper or Gradle Wrapper on the backend. For a fresh setup, the current official Vue/Vite path expects Node.js `^20.19.0 || >=22.12.0`, while current Spring Boot docs require Java 17+, Maven 3.6.3+, or Gradle 8.14+/9.x. If the repository pins stricter versions in wrappers, lockfiles, or CI, the repository should take precedence over this README. citeturn0search1turn0search2turn1search0turn1search3turn15search1
+For reproducibility, the setup below assumes a public mono-repo with `frontend/` and `backend/` directories, npm on the frontend, PostgreSQL as the primary database, and either Maven Wrapper or Gradle Wrapper on the backend. For a fresh setup, the current official Vue/Vite path expects Node.js `^20.19.0 || >=22.12.0`, while current Spring Boot docs require Java 17+, Maven 3.6.3+, or Gradle 8.14+/9.x. If the repository pins stricter versions in wrappers, lockfiles, or CI, the repository should take precedence over this README. 
 
-For discoverability, keep this README aligned with the repository description, topics, `LICENSE`, `CONTRIBUTING.md`, and workflow status badge. GitHub surfaces these files and metadata directly in the repository experience, which makes onboarding faster and reduces avoidable friction for new contributors. citeturn9search0turn9search3turn8search11turn12search0
+For discoverability, keep this README aligned with the repository description, topics, `LICENSE`, `CONTRIBUTING.md`, and workflow status badge. GitHub surfaces these files and metadata directly in the repository experience, which makes onboarding faster and reduces avoidable friction for new contributors. 
 
 ## Project Snapshot
 
-Tukan is designed as a browser-based client talking to a standalone REST API. The frontend is optimized for developer experience and typed UI work through Vue 3, TypeScript, and Vite; the backend is optimized for structured business logic, externalized configuration, and production-style packaging through Spring Boot. PostgreSQL is used as the relational data store, and AI-related secrets should remain backend-only because Vite exposes `VITE_*` environment variables to client bundles. citeturn17search0turn0search9turn6search2turn1search1turn7search0turn7search1
+Tukan is designed as a browser-based client talking to a standalone REST API. The frontend is optimized for developer experience and typed UI work through Vue 3, TypeScript, and Vite; the backend is optimized for structured business logic, externalized configuration, and production-style packaging through Spring Boot. PostgreSQL is used as the relational data store, and AI-related secrets should remain backend-only because Vite exposes `VITE_*` environment variables to client bundles. 
 
 **Key features**
 
@@ -42,7 +56,7 @@ Tukan is designed as a browser-based client talking to a standalone REST API. Th
 | CI/CD | GitHub Actions | Suggested CI/CD baseline for public GitHub repos |
 | Deployment | Static hosting + JVM or OCI image | Split delivery model for frontend and backend |
 
-Vue’s official tooling path uses `create-vue` on top of Vite and supports TypeScript-ready project scaffolding. Spring Boot is explicitly designed for stand-alone, production-grade applications that can run via `java -jar`, and GitHub Actions provides official guides for Node.js and Java CI workflows. citeturn6search0turn0search9turn15search0turn1search1turn5search0turn5search7
+Vue’s official tooling path uses `create-vue` on top of Vite and supports TypeScript-ready project scaffolding. Spring Boot is explicitly designed for stand-alone, production-grade applications that can run via `java -jar`, and GitHub Actions provides official guides for Node.js and Java CI workflows. 
 
 ## Architecture
 
@@ -82,7 +96,7 @@ flowchart LR
     B --> O[Observability / Logs]
 ```
 
-GitHub renders Mermaid diagrams directly in Markdown, so the flowchart above can live in `README.md` without needing a screenshot or exported image. citeturn8search0
+GitHub renders Mermaid diagrams directly in Markdown, so the flowchart above can live in `README.md` without needing a screenshot or exported image. 
 
 **Architectural decisions and trade-offs**
 
@@ -95,7 +109,7 @@ GitHub renders Mermaid diagrams directly in Markdown, so the flowchart above can
 | Externalized configuration | Easier environment parity across local, CI, and production | More initial setup work than hardcoded config |
 | Static frontend + stateless backend | Clean deployment split and simpler rollback strategy | Requires coordinating two deployment artifacts |
 
-The backend-only AI boundary is the right default for public web apps because Vite intentionally exposes only `VITE_*` variables to client-side code, while Spring Boot is built around externalized configuration through YAML, environment variables, and command-line arguments. For AI-specific risk controls, NIST’s AI RMF and OWASP’s GenAI guidance both reinforce governance, prompt-injection awareness, and safer output handling. citeturn7search0turn7search1turn10search0turn10search1turn10search3
+The backend-only AI boundary is the right default for public web apps because Vite intentionally exposes only `VITE_*` variables to client-side code, while Spring Boot is built around externalized configuration through YAML, environment variables, and command-line arguments. For AI-specific risk controls, NIST’s AI RMF and OWASP’s GenAI guidance both reinforce governance, prompt-injection awareness, and safer output handling. 
 
 **Assumed repository structure**
 
@@ -154,7 +168,7 @@ The backend-only AI boundary is the right default for public web apps because Vi
 | Backend | `AI_MODEL` | No | `gpt-4.1-mini` | Model identifier |
 | Backend | `AI_API_KEY` | If AI is enabled | `***` | Provider secret; never expose client-side |
 
-Vite exposes environment variables through `import.meta.env` and only variables prefixed with `VITE_` are exposed to browser code, which means they must never contain secrets. Spring Boot supports YAML files, environment variables, and command-line arguments as standard configuration sources. citeturn7search0turn7search1
+Vite exposes environment variables through `import.meta.env` and only variables prefixed with `VITE_` are exposed to browser code, which means they must never contain secrets. Spring Boot supports YAML files, environment variables, and command-line arguments as standard configuration sources. 
 
 **Frontend `.env.example`**
 
@@ -200,7 +214,7 @@ app:
     api-key: ${AI_API_KEY:}
 ```
 
-This sample uses Spring Boot placeholder binding so the same application can run locally, in CI, or in production without hardcoding environment-specific values. On the frontend, keep secrets out of `.env`; on the backend, prefer real environment variables or your deployment platform’s secret store. citeturn7search0turn7search1turn16search3
+This sample uses Spring Boot placeholder binding so the same application can run locally, in CI, or in production without hardcoding environment-specific values. On the frontend, keep secrets out of `.env`; on the backend, prefer real environment variables or your deployment platform’s secret store. 
 
 ## Local Setup and Deployment
 
@@ -215,11 +229,11 @@ This sample uses Spring Boot placeholder binding so the same application can run
 | Gradle | 8.14+ or 9.x if using Gradle |
 | PostgreSQL | Any supported version compatible with your JDBC driver; examples below use the official Docker image |
 
-The Node and Java baselines above follow the current official Vue/Vite and Spring Boot documentation. Vite’s default dev server port is `5173`; Spring Boot’s default application port is `8080` unless overridden; `vite preview` typically serves the production build locally on `4173`. citeturn15search1turn0search2turn1search3turn14search0turn16search3turn15search16
+The Node and Java baselines above follow the current official Vue/Vite and Spring Boot documentation. Vite’s default dev server port is `5173`; Spring Boot’s default application port is `8080` unless overridden; `vite preview` typically serves the production build locally on `4173`. 
 
 **Database setup**
 
-The official PostgreSQL Docker image accepts `POSTGRES_PASSWORD` as the required variable, while `POSTGRES_USER` and `POSTGRES_DB` are optional. PostgreSQL also supports creating a database through `CREATE DATABASE` or the `createdb` utility. citeturn3search1turn3search7turn3search0turn3search4turn13search5
+The official PostgreSQL Docker image accepts `POSTGRES_PASSWORD` as the required variable, while `POSTGRES_USER` and `POSTGRES_DB` are optional. PostgreSQL also supports creating a database through `CREATE DATABASE` or the `createdb` utility. 
 
 ```bash
 # Start PostgreSQL with Docker
@@ -243,7 +257,7 @@ CREATE DATABASE tukan OWNER tukan;
 
 **Backend run**
 
-Spring Boot can be started with the Maven plugin (`spring-boot:run`), the Gradle `bootRun` task, or as a packaged executable JAR. It also supports OCI image creation through Cloud Native Buildpacks. citeturn2search0turn2search1turn2search3turn11search0turn11search1turn11search7
+Spring Boot can be started with the Maven plugin (`spring-boot:run`), the Gradle `bootRun` task, or as a packaged executable JAR. It also supports OCI image creation through Cloud Native Buildpacks. 
 
 ```bash
 # Maven Wrapper
@@ -265,7 +279,7 @@ http://localhost:8080
 
 **Frontend run**
 
-The official Vue workflow uses `create-vue`, which scaffolds a Vite-powered project. In a standard Vite app, `npm run dev` starts the dev server, `npm run build` creates the production bundle, and `npm run preview` locally previews that bundle. citeturn15search1turn15search0turn15search2turn6search10turn15search12turn15search16
+The official Vue workflow uses `create-vue`, which scaffolds a Vite-powered project. In a standard Vite app, `npm run dev` starts the dev server, `npm run build` creates the production bundle, and `npm run preview` locally previews that bundle. 
 
 ```bash
 cd frontend
@@ -281,7 +295,7 @@ http://localhost:5173
 
 **Frontend deployment**
 
-For production, build the Vite app and deploy the generated `dist/` folder to a static host such as Nginx, Netlify, Vercel, or any equivalent static file platform. Use `npm run preview` only to validate the build locally; it is not the production hosting strategy. citeturn6search10turn15search12turn15search16
+For production, build the Vite app and deploy the generated `dist/` folder to a static host such as Nginx, Netlify, Vercel, or any equivalent static file platform. Use `npm run preview` only to validate the build locally; it is not the production hosting strategy. 
 
 ```bash
 cd frontend
@@ -292,7 +306,7 @@ npm run preview
 
 **Backend deployment**
 
-For a JVM deployment, package the backend and run the executable JAR. For a container-first deployment, build an OCI image through Spring Boot’s buildpacks support; the official docs note these images build and run as non-root by default. citeturn1search1turn11search0turn11search1turn11search7
+For a JVM deployment, package the backend and run the executable JAR. For a container-first deployment, build an OCI image through Spring Boot’s buildpacks support; the official docs note these images build and run as non-root by default. 
 
 ```bash
 # Maven JAR build
@@ -344,24 +358,24 @@ cd backend
 | Backend Gradle | `./gradlew bootJar` | Build executable JAR | Packaged deployment |
 | Backend Gradle | `./gradlew bootBuildImage` | Build OCI image | Container deployment |
 
-Vite’s standard scaffold uses `dev`, `build`, and `preview` scripts, and Vue recommends Vitest as the natural unit-testing fit for Vite-based Vue applications. On the backend, Spring Boot’s official plugin tasks cover local run, executable packaging, and OCI image creation for both Maven and Gradle. citeturn15search2turn6search1turn2search0turn2search1turn11search0turn11search1turn11search7
+Vite’s standard scaffold uses `dev`, `build`, and `preview` scripts, and Vue recommends Vitest as the natural unit-testing fit for Vite-based Vue applications. On the backend, Spring Boot’s official plugin tasks cover local run, executable packaging, and OCI image creation for both Maven and Gradle. 
 
 **CI/CD hints**
 
-A sensible public GitHub baseline is to run frontend and backend checks in separate jobs, cache dependencies, fail the pipeline on lint/test/build errors, publish artifacts, and only deploy after quality gates pass. GitHub provides official CI guides for Node.js, Java with Maven, and Java with Gradle, and supports status badges that can be shown directly in the README. citeturn5search0turn5search1turn5search7turn5search4turn8search11
+A sensible public GitHub baseline is to run frontend and backend checks in separate jobs, cache dependencies, fail the pipeline on lint/test/build errors, publish artifacts, and only deploy after quality gates pass. GitHub provides official CI guides for Node.js, Java with Maven, and Java with Gradle, and supports status badges that can be shown directly in the README. 
 
 Use this minimum pipeline order:
 
 - Frontend: install → lint → type-check → unit tests → build
 - Backend: test → package → publish artifact or image
 - Deployment: frontend `dist/` to static hosting, backend JAR or OCI image to the chosen runtime
-- Secrets: store database credentials and AI keys in CI secrets, never in Vite `VITE_*` variables citeturn7search0turn5search4
+- Secrets: store database credentials and AI keys in CI secrets, never in Vite `VITE_*` variables 
 
-If you publish on GitHub, the badge at the top of this README can use the built-in workflow status badge format, while the static technology badges can be generated through Shields. citeturn8search11turn8search1turn8search7
+If you publish on GitHub, the badge at the top of this README can use the built-in workflow status badge format, while the static technology badges can be generated through Shields. 
 
 ## Contribution, License, and Changelog
 
-For public repositories, keep contributor instructions in `CONTRIBUTING.md` at the repository root, `docs/`, or `.github/`, because GitHub surfaces that file to people opening issues and pull requests. Keep the README focused on project overview and setup, and put contribution rules, PR templates, issue templates, and community health files under `.github/` or adjacent docs. citeturn9search0turn9search3turn9search2
+For public repositories, keep contributor instructions in `CONTRIBUTING.md` at the repository root, `docs/`, or `.github/`, because GitHub surfaces that file to people opening issues and pull requests. Keep the README focused on project overview and setup, and put contribution rules, PR templates, issue templates, and community health files under `.github/` or adjacent docs. 
 
 **Contribution guidelines**
 
@@ -374,4 +388,4 @@ For public repositories, keep contributor instructions in `CONTRIBUTING.md` at t
 
 **License**
 
-GitHub recommends shipping a real `LICENSE` file in the repository root. For a public academic or open-source release, MIT is a practical permissive default, which is why the badge above uses MIT; if Tukan is institution-restricted or proprietary, replace both the badge and the `LICENSE` file before publishing. citeturn0search12turn12search4
+GitHub recommends shipping a real `LICENSE` file in the repository root. For a public academic or open-source release, MIT is a practical permissive default, which is why the badge above uses MIT; if Tukan is institution-restricted or proprietary, replace both the badge and the `LICENSE` file before publishing.
